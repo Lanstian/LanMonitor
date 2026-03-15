@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>LanMonitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════
+   Variables — dark (default)
+═══════════════════════════════════ */
+:root{
+  --bg:    #0b0c0f;
+  --bg-t:  #080909;
+  --glass: rgba(255,255,255,.030);
+  --gh:    rgba(255,255,255,.055);
+  --bd:    rgba(255,255,255,.07);
+  --bdh:   rgba(255,255,255,.13);
+  --bdf:   rgba(184,144,106,.4);
+
+  --t1:#dedad3; --t2:#716c65; --t3:#38342f; --t4:#1e1b18;
+
+  --acc:  #b8906a; --acc-d:rgba(184,144,106,.10); --acc-b:rgba(184,144,106,.32);
+  --ok:   #5e9470; --ok-d: rgba(94,148,112,.11);
+  --warn: #9e8f5a;
+  --err:  #9e5a5a; --err-d:rgba(158,90,90,.11);
+
+  --rx:#6aaa82; --tx:#7898b8; --sys:#9e8f5a;
+
+  /* block type */
+  --bl:#c4924a; --bm:#5e9470; --bp:#7a6aab;
+  --bs:#5a7a9e; --bh:#9a72b4; --bc:#50504a;
+
+  --mono:'JetBrains Mono','Cascadia Code',monospace;
+  --kai:'KaiTi','STKaiti','楷体','FangSong','仿宋',serif;
+
+  --r:8px; --rs:5px;
+  --dur:230ms; --ease:cubic-bezier(.4,0,.2,1); --spring:cubic-bezier(.34,1.15,.64,1);
+
+  --lw:244px; --rw:322px; --th:60px; --bh:28px;
+}
+
+/* ── Light mode overrides ── */
+body.light{
+  --bg:    #f2efe9;
+  --bg-t:  #eae7e0;
+  --glass: rgba(255,255,255,.72);
+  --gh:    rgba(255,255,255,.90);
+  --bd:    rgba(0,0,0,.09);
+  --bdh:   rgba(0,0,0,.16);
+  --bdf:   rgba(140,90,50,.38);
+
+  --t1:#1e1b16; --t2:#68635c; --t3:#aba298; --t4:#c8c0b8;
+
+  --acc:  #9a6838; --acc-d:rgba(154,104,56,.10); --acc-b:rgba(154,104,56,.30);
+  --ok:   #4a7e5c; --ok-d: rgba(74,126,92,.10);
+  --err:  #8e4848; --err-d:rgba(142,72,72,.10);
+
+  --rx:#3d8858; --tx:#4a6a9a; --sys:#7a6e3a;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--t1);
+  font-family:var(--mono);font-size:13px;line-height:1.55;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.018'/%3E%3C/svg%3E");
+  transition:background .35s,color .35s;
+  position:relative;
+}
+#bg-layer,#bg-overlay{
+  position:fixed;inset:0;pointer-events:none;
+}
+#bg-layer{
+  z-index:0;opacity:0;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  transform:scale(1.03);
+  filter:saturate(.78) brightness(.68) contrast(1.02);
+  transition:opacity .35s var(--ease),filter .35s var(--ease);
+}
+body.has-custom-bg #bg-layer{opacity:.7;}
+body.light #bg-layer{filter:saturate(.82) brightness(.92) contrast(1.01);}
+body.light.has-custom-bg #bg-layer{opacity:.56;}
+#bg-overlay{
+  z-index:0;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255,255,255,.05), transparent 32%),
+    linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.22));
+}
+body.light #bg-overlay{
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255,255,255,.18), transparent 32%),
+    linear-gradient(to bottom, rgba(255,255,255,.08), rgba(255,255,255,.18));
+}
+
+/* ═══════════════════════════════════
+   Animations
+═══════════════════════════════════ */
+@keyframes blur-in{
+  from{filter:blur(14px);opacity:0;transform:translateY(5px)}
+  to  {filter:blur(0);   opacity:1;transform:translateY(0)}
+}
+@keyframes dd-open{
+  from{filter:blur(7px);opacity:0;transform:var(--dd-origin-from,translateY(-8px)) scale(.95)}
+  to  {filter:blur(0);  opacity:1;transform:var(--dd-origin-to,translateY(0)) scale(1)}
+}
+@keyframes dd-close{
+  from{filter:blur(0);  opacity:1;transform:var(--dd-origin-to,translateY(0)) scale(1)}
+  to  {filter:blur(7px);opacity:0;transform:var(--dd-origin-from,translateY(-8px)) scale(.95)}
+}
+@keyframes log-in {from{opacity:0;transform:translateX(-3px)}to{opacity:1;transform:translateX(0)}}
+@keyframes blk-in {from{opacity:0;transform:scale(.95) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes modal-bg{from{opacity:0}to{opacity:1}}
+@keyframes modal-card{from{filter:blur(16px);opacity:0;transform:scale(.94) translateY(10px)}to{filter:blur(0);opacity:1;transform:scale(1) translateY(0)}}
+@keyframes settings-in{from{filter:blur(8px);opacity:0;transform:translateY(8px)}to{filter:blur(0);opacity:1;transform:translateY(0)}}
+@keyframes settings-out{from{filter:blur(0);opacity:1;transform:translateY(0)}to{filter:blur(8px);opacity:0;transform:translateY(8px)}}
+@keyframes pip-blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes row-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cw {to{transform:rotate(360deg)}}
+@keyframes ccw{to{transform:rotate(-360deg)}}
+@keyframes sv-flash{0%{color:var(--ok)}100%{color:var(--t1)}}
+@keyframes t-out{from{opacity:1}to{opacity:0;pointer-events:none}}
+
+/* page reveal */
+#topbar   {animation:blur-in .6s var(--ease) 0s   both}
+#left     {animation:blur-in .65s var(--ease) .05s both}
+#center   {animation:blur-in .65s var(--ease) .09s both}
+#right    {animation:blur-in .7s  var(--ease) .13s both}
+#statusbar{animation:blur-in .6s  var(--ease) .18s both}
+
+/* ═══════════════════════════════════
+   Shell
+═══════════════════════════════════ */
+#shell{display:flex;flex-direction:column;height:100vh;width:100vw;overflow:hidden;}
+
+/* ═══════════════════════════════════
+   Topbar — 60px
+═══════════════════════════════════ */
+#topbar{
+  height:var(--th);
+  display:flex;align-items:center;gap:8px;padding:0 16px;
+  border-bottom:1px solid var(--bd);
+  background:var(--glass);
+  backdrop-filter:blur(24px) saturate(1.3);
+  flex-shrink:0;z-index:30;
+  transition:background .35s,border-color .35s;
+}
+
+/* Logo — text only, no dot, bold */
+.logo{
+  font-family:var(--kai);font-size:17px;font-weight:700;
+  letter-spacing:.1em;color:var(--t1);margin-right:6px;
+  user-select:none;
+}
+
+.tb-sep{width:1px;height:22px;background:var(--bd);flex-shrink:0;margin:0 2px;transition:background .35s;}
+
+.tb-tag{
+  font-family:var(--kai);font-size:12px;letter-spacing:.04em;
+  padding:5px 13px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:none;color:var(--t2);
+  cursor:pointer;transition:all var(--dur) var(--ease);outline:none;white-space:nowrap;
+}
+.tb-tag:hover{color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+.tb-tag.on{color:var(--acc);border-color:var(--acc-b);background:var(--acc-d);}
+
+.tb-btn{
+  width:32px;height:30px;border-radius:var(--rs);
+  border:1px solid transparent;background:none;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.tb-btn:hover{background:var(--gh);border-color:var(--bd);color:var(--t1);}
+
+/* ── Dropdown (display options) ── */
+.dd-wrap{position:relative;}
+.dd-btn{
+  font-family:var(--kai);font-size:12px;letter-spacing:.04em;
+  padding:5px 12px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:none;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;gap:5px;white-space:nowrap;
+}
+.dd-btn:hover{color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+.dd-btn.open{color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+.dd-btn .chev{transition:transform var(--dur) var(--ease);}
+.dd-btn.open .chev{transform:rotate(180deg);}
+
+/* common dropdown panel base */
+.dd-panel{
+  position:absolute;top:calc(100% + 8px);
+  background:rgba(10,11,15,.97);
+  backdrop-filter:blur(28px) saturate(1.5);
+  border:1px solid var(--bdh);border-radius:var(--r);
+  padding:8px;z-index:200;
+  /* hidden state */
+  opacity:0;pointer-events:none;
+  transform-origin:top center;
+}
+body.light .dd-panel{background:rgba(248,245,240,.97);}
+
+/* panel centred under button */
+.dd-panel.center-align{left:50%;transform:translateX(-50%) translateY(-8px) scale(.95);}
+.dd-panel.right-align {right:0;transform:translateY(-8px) scale(.95);}
+
+/* open: animate in */
+.dd-panel.open{
+  opacity:1;pointer-events:auto;
+  animation:dd-open .22s var(--spring) forwards;
+}
+/* closing: animate out */
+.dd-panel.closing{
+  animation:dd-close .2s var(--ease) forwards;
+  pointer-events:none;
+}
+
+/* open transforms */
+.dd-panel.center-align.open    {transform:translateX(-50%) translateY(0) scale(1);}
+.dd-panel.right-align.open     {transform:translateY(0) scale(1);}
+
+.dd-section{font-family:var(--kai);font-size:10px;color:var(--t3);letter-spacing:.06em;padding:5px 7px 3px;}
+.dd-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 8px;border-radius:var(--rs);cursor:pointer;
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+  transition:background var(--dur);user-select:none;
+}
+.dd-item:hover{background:var(--gh);color:var(--t1);}
+.dd-item input[type=checkbox]{width:13px;height:13px;accent-color:var(--acc);cursor:pointer;flex-shrink:0;}
+.dd-sep{height:1px;background:var(--bd);margin:5px 0;}
+.dd-action{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 8px;border-radius:var(--rs);cursor:pointer;
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+  border:none;background:none;width:100%;text-align:left;outline:none;
+  transition:all var(--dur);
+}
+.dd-action:hover{background:rgba(158,90,90,.12);color:var(--err);}
+
+/* right side of topbar */
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px;}
+
+/* conn chip */
+#conn-chip{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 15px;border-radius:20px;
+  border:1px solid var(--bd);background:var(--glass);
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);
+}
+#conn-chip:hover{border-color:var(--bdh);color:var(--t1);background:var(--gh);}
+#conn-chip.live{border-color:rgba(94,148,112,.4);color:var(--ok);}
+#pip{width:7px;height:7px;border-radius:50%;background:var(--err);transition:all var(--dur);flex-shrink:0;}
+#pip.connecting{background:var(--warn);animation:pip-blink .85s infinite;}
+#pip.connected {background:var(--ok);box-shadow:0 0 6px var(--ok);}
+
+/* right panel toggle */
+#btn-rp{
+  font-family:var(--kai);font-size:12px;letter-spacing:.04em;
+  padding:5px 12px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:var(--glass);color:var(--t2);
+  cursor:pointer;transition:all var(--dur) var(--ease);outline:none;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+}
+#btn-rp:hover{color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+#btn-rp.on{color:var(--acc);border-color:var(--acc-b);background:var(--acc-d);}
+
+/* ═══════════════════════════════════
+   Workspace
+═══════════════════════════════════ */
+#workspace{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+/* ═══════════════════════════════════
+   Left panel — 244px
+═══════════════════════════════════ */
+#left{
+  width:var(--lw);min-width:var(--lw);flex-shrink:0;
+  display:flex;flex-direction:column;
+  border-right:1px solid var(--bd);
+  background:var(--glass);
+  backdrop-filter:blur(24px) saturate(1.2);
+  overflow:hidden;
+  transition:background .35s,border-color .35s;
+}
+
+.tab-row{display:flex;border-bottom:1px solid var(--bd);padding:0 14px;flex-shrink:0;}
+.tab-item{
+  font-family:var(--kai);font-size:13px;padding:12px 13px 11px;
+  cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;
+  transition:color var(--dur),border-color var(--dur);
+  display:flex;align-items:center;gap:6px;white-space:nowrap;user-select:none;
+}
+.tab-item:hover{color:var(--t1);}
+.tab-item.on{color:var(--t1);border-bottom-color:var(--acc);}
+
+#left-body{
+  flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 14px 24px;
+  mask-image:linear-gradient(to bottom,transparent 0,black 10px,black calc(100% - 14px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,black 10px,black calc(100% - 14px),transparent 100%);
+}
+#left-body::-webkit-scrollbar{width:3px;}
+#left-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px;}
+
+/* section title */
+.st{
+  font-family:var(--kai);font-size:11px;color:var(--t3);letter-spacing:.07em;
+  margin:16px 0 9px;display:flex;align-items:center;gap:6px;
+}
+.st:first-child{margin-top:4px;}
+.st::after{content:'';flex:1;height:1px;background:var(--bd);}
+
+/* generic inputs */
+.inp{
+  width:100%;background:rgba(0,0,0,.26);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:12px;padding:6px 9px;
+  outline:none;transition:border-color var(--dur);
+}
+body.light .inp{background:rgba(0,0,0,.05);}
+.inp:focus{border-color:var(--bdf);}
+.inp::placeholder{color:var(--t3);}
+.inp:disabled{opacity:.22;cursor:not-allowed;}
+
+.sel{
+  width:100%;background:rgba(0,0,0,.26);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:12px;
+  padding:6px 24px 6px 9px;outline:none;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23716c65' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+  transition:border-color var(--dur);
+}
+body.light .sel{background-color:rgba(0,0,0,.05);}
+.sel:focus{border-color:var(--bdf);}
+.sel option{background:#1a1b1e;}
+body.light .sel option{background:#f2efe9;}
+
+.sr{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+.sl{font-family:var(--kai);font-size:12px;color:var(--t2);min-width:46px;white-space:nowrap;}
+
+/* buttons */
+.btn{
+  font-family:var(--kai);font-size:12px;letter-spacing:.04em;
+  padding:7px 12px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:var(--glass);color:var(--t2);
+  cursor:pointer;transition:all var(--dur) var(--ease);outline:none;
+  white-space:nowrap;display:inline-flex;align-items:center;gap:5px;
+}
+.btn:hover:not(:disabled){background:var(--gh);border-color:var(--bdh);color:var(--t1);}
+.btn:active:not(:disabled){opacity:.55;transform:scale(.96);}
+.btn:disabled{opacity:.2;cursor:not-allowed;}
+.btn-f{width:100%;justify-content:center;}
+.btn-g{display:flex;gap:5px;}
+.btn-g .btn{flex:1;justify-content:center;}
+.btn.on   {color:var(--acc);border-color:var(--acc-b);background:var(--acc-d);}
+.btn.is-ok{color:var(--ok); border-color:rgba(94,148,112,.4);background:var(--ok-d);}
+.btn.is-er{color:var(--err);border-color:rgba(158,90,90,.4); background:var(--err-d);}
+
+/* accordion */
+.acc{border-top:1px solid var(--bd);}
+.ah{display:flex;align-items:center;gap:8px;padding:10px 0;cursor:pointer;user-select:none;}
+.ah:hover .at{color:var(--t1);}
+.at{flex:1;font-family:var(--kai);font-size:13px;letter-spacing:.05em;color:var(--t2);transition:color var(--dur);}
+.ah.open .at{color:var(--t1);}
+.abadge{
+  font-size:10px;color:var(--t3);background:rgba(255,255,255,.04);
+  border:1px solid var(--bd);border-radius:3px;padding:1px 6px;font-family:var(--mono);
+  transition:all var(--dur);
+}
+.abadge.live{color:var(--ok);border-color:rgba(94,148,112,.3);background:rgba(94,148,112,.07);}
+.achev{color:var(--t3);transition:transform var(--dur) var(--ease);display:flex;align-items:center;}
+.ah.open .achev{transform:rotate(90deg);}
+.ab{
+  max-height:0;overflow:hidden;
+  transition:max-height .32s var(--ease),opacity .25s var(--ease);
+  opacity:0;
+}
+.ab.open{max-height:400px;opacity:1;}
+.ai{padding:2px 0 12px;}
+
+/* LED row */
+.lrow{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  border-radius:var(--rs);background:rgba(255,255,255,.018);border:1px solid var(--bd);
+  margin-bottom:9px;
+}
+.lpip{width:8px;height:8px;border-radius:50%;background:var(--t3);transition:all .4s;flex-shrink:0;}
+.lpip.on{background:#d4b86a;box-shadow:0 0 8px rgba(212,184,106,.55);}
+.llbl{font-family:var(--kai);font-size:12px;color:var(--t2);}
+
+/* motor */
+.mrow{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  border-radius:var(--rs);background:rgba(255,255,255,.018);border:1px solid var(--bd);
+  margin-bottom:9px;
+}
+.mic{font-size:14px;display:inline-block;color:var(--t2);}
+.mic.fwd{animation:cw  .5s linear infinite;color:var(--ok);}
+.mic.bwd{animation:ccw .5s linear infinite;color:var(--err);}
+.mlbl{font-family:var(--kai);font-size:12px;color:var(--t2);}
+
+/* slider */
+.slrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+input[type=range]{
+  -webkit-appearance:none;flex:1;height:3px;border-radius:2px;outline:none;cursor:pointer;
+  background:linear-gradient(to right,var(--acc) 0%,var(--acc) var(--pct,50%),var(--t3) var(--pct,50%),var(--t3) 100%);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--t1);border:2px solid var(--acc);
+  transition:transform .15s,box-shadow .15s;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 0 0 4px var(--acc-d);}
+input[type=range]:disabled{opacity:.2;cursor:not-allowed;}
+.slval{font-size:12px;color:var(--acc);min-width:26px;text-align:right;}
+
+/* toggle */
+.tgw{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;}
+.tgl{position:relative;width:30px;height:17px;flex-shrink:0;}
+.tgl input{display:none;}
+.tgt{position:absolute;inset:0;background:rgba(255,255,255,.07);border:1px solid var(--bd);border-radius:9px;transition:all var(--dur);}
+.tgh{position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--t3);transition:transform var(--dur) var(--ease),background var(--dur);}
+.tgl input:checked~.tgt{background:rgba(94,148,112,.16);border-color:rgba(94,148,112,.4);}
+.tgl input:checked~.tgh{transform:translateX(13px);background:var(--ok);}
+.tgl input:disabled~.tgt{opacity:.2;cursor:not-allowed;}
+.tglbl{font-family:var(--kai);font-size:12px;color:var(--t2);}
+
+/* sensor mini cards */
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;}
+.scard{background:rgba(255,255,255,.02);border:1px solid var(--bd);border-radius:var(--rs);padding:7px;text-align:center;}
+.scard .sk{font-size:10px;color:var(--t3);font-family:var(--kai);margin-bottom:4px;}
+.scard .sv{font-size:15px;font-weight:500;color:var(--t1);font-variant-numeric:tabular-nums;}
+.scard .su{font-size:9px;color:var(--t3);margin-top:1px;}
+.sv.flash{animation:sv-flash .35s ease;}
+
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ═══════════════════════════════════
+   Center
+═══════════════════════════════════ */
+#center{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;
+  background:linear-gradient(to bottom, rgba(255,255,255,.032), rgba(255,255,255,.018));
+  backdrop-filter:blur(24px) saturate(1.15);
+  transition:background .35s,border-color .35s;
+}
+body.light #center{
+  background:linear-gradient(to bottom, rgba(255,255,255,.48), rgba(255,255,255,.28));
+}
+
+#term-wrap{
+  flex:1;position:relative;overflow:hidden;
+  background:transparent;
+}
+#term-wrap::before,#term-wrap::after{
+  content:'';position:absolute;left:0;right:0;height:36px;z-index:4;pointer-events:none;
+}
+#term-wrap::before{top:0;background:linear-gradient(to bottom, rgba(8,9,9,.72), transparent);}
+#term-wrap::after {bottom:0;background:linear-gradient(to top, rgba(8,9,9,.72), transparent);}
+body.light #term-wrap::before{background:linear-gradient(to bottom, rgba(234,231,224,.8), transparent);}
+body.light #term-wrap::after {background:linear-gradient(to top, rgba(234,231,224,.8), transparent);}
+
+#term-out{
+  position:absolute;inset:0;overflow-y:auto;
+  background:transparent;padding:18px 16px;
+  font-family:var(--mono);font-size:13px;line-height:1.75;
+  transition:background .35s;
+}
+#term-out::-webkit-scrollbar{width:4px;}
+#term-out::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}
+#term-out::-webkit-scrollbar-track{background:transparent;}
+
+.t-row{
+  display:grid;grid-template-columns:80px 36px 1fr;
+  gap:0 11px;padding:2px 0;align-items:baseline;
+  border-bottom:1px solid rgba(255,255,255,.018);
+  animation:log-in .17s var(--ease);
+}
+body.light .t-row{border-bottom-color:rgba(0,0,0,.05);}
+.t-ts{color:var(--t3);font-size:10.5px;letter-spacing:.03em;}
+.t-dir{font-size:10.5px;font-weight:500;letter-spacing:.05em;}
+.t-dir.rx{color:var(--rx);}
+.t-dir.tx{color:var(--tx);}
+.t-dir.sys{color:var(--sys);}
+.t-msg{color:var(--t2);word-break:break-all;}
+.t-msg.rx {color:var(--rx);opacity:.9;}
+.t-msg.tx {color:var(--tx);opacity:.9;}
+.t-msg.sys{color:var(--sys);opacity:.85;}
+.t-msg.err{color:var(--err);}
+.t-msg.hex{color:#a07ab8;font-size:11px;letter-spacing:.05em;}
+
+#term-empty{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:9px;pointer-events:none;
+}
+.eic{font-size:22px;opacity:.07;}
+.etx{font-family:var(--kai);font-size:14px;color:var(--t3);}
+
+/* send zone */
+#send-zone{
+  border-top:1px solid var(--bd);flex-shrink:0;
+  background:rgba(255,255,255,.018);
+  backdrop-filter:blur(12px) saturate(1.08);
+}
+body.light #send-zone{background:rgba(255,255,255,.22);}
+#send-bar{
+  height:32px;display:flex;align-items:center;gap:6px;
+  padding:0 12px;border-bottom:1px solid var(--bd);
+}
+.stag{
+  font-family:var(--kai);font-size:11px;
+  padding:3px 9px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:none;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;gap:4px;white-space:nowrap;
+}
+.stag:hover{color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+.stag.on{color:var(--acc);border-color:var(--acc-b);background:var(--acc-d);}
+.stag.on-ok{color:var(--ok);border-color:rgba(94,148,112,.4);background:var(--ok-d);}
+.stag.danger:hover{color:var(--err);border-color:rgba(158,90,90,.35);background:rgba(158,90,90,.08);}
+.ssep{width:1px;height:16px;background:var(--bd);flex-shrink:0;}
+.ssp{flex:1;}
+
+.ninp{
+  background:rgba(0,0,0,.22);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:11px;
+  padding:3px 5px;outline:none;text-align:center;transition:border-color var(--dur);
+}
+body.light .ninp{background:rgba(0,0,0,.05);}
+.ninp:focus{border-color:var(--bdf);}
+
+#send-row{display:flex;align-items:center;gap:8px;padding:9px 12px;}
+#send-inp{
+  flex:1;background:rgba(0,0,0,.24);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:13px;
+  padding:8px 10px;outline:none;resize:none;height:38px;overflow:hidden;
+  transition:border-color var(--dur);
+}
+body.light #send-inp{background:rgba(0,0,0,.05);}
+#send-inp:focus{border-color:var(--bdf);}
+#send-inp:disabled{opacity:.2;cursor:not-allowed;}
+#send-inp::placeholder{color:var(--t3);}
+
+#btn-send{
+  font-family:var(--kai);font-size:13px;letter-spacing:.04em;
+  padding:0 22px;height:38px;border-radius:var(--rs);
+  border:1px solid var(--bdh);background:var(--gh);color:var(--t1);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+}
+#btn-send:hover:not(:disabled){background:rgba(255,255,255,.12);}
+#btn-send:active:not(:disabled){opacity:.6;transform:scale(.97);}
+#btn-send:disabled{opacity:.2;cursor:not-allowed;}
+
+/* ═══════════════════════════════════
+   Right panel
+═══════════════════════════════════ */
+#right{
+  width:var(--rw);min-width:var(--rw);flex-shrink:0;
+  display:flex;flex-direction:column;
+  border-left:1px solid var(--bd);
+  background:var(--glass);
+  backdrop-filter:blur(24px) saturate(1.2);
+  overflow:hidden;
+  transition:
+    width .48s cubic-bezier(.4,0,.2,1),
+    min-width .48s cubic-bezier(.4,0,.2,1),
+    opacity .35s ease,
+    filter .42s ease,
+    border-color .3s;
+  will-change:width,filter;
+}
+#right.hidden{
+  width:0!important;min-width:0!important;
+  opacity:0;filter:blur(10px);
+  border-left-color:transparent;
+  pointer-events:none;
+}
+
+#right-hdr{
+  padding:0 12px;height:var(--th);
+  display:flex;align-items:center;gap:8px;
+  border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+.rhtitle{font-family:var(--kai);font-size:14px;letter-spacing:.06em;color:var(--t1);flex:1;}
+.lpwrap{display:flex;align-items:center;gap:5px;}
+.lplbl{font-family:var(--kai);font-size:11px;color:var(--t2);white-space:nowrap;}
+.lpinp{
+  width:48px;background:rgba(0,0,0,.24);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:11px;
+  padding:3px 5px;outline:none;text-align:center;transition:border-color var(--dur);
+}
+body.light .lpinp{background:rgba(0,0,0,.05);}
+.lpinp:focus{border-color:var(--bdf);}
+.lpunit{font-size:11px;color:var(--t3);font-family:var(--kai);}
+
+/* right panel tabs */
+#right-tabs{
+  display:flex;border-bottom:1px solid var(--bd);padding:0 12px;flex-shrink:0;
+}
+.rtab{
+  font-family:var(--kai);font-size:12px;padding:9px 11px 8px;
+  cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;
+  transition:color var(--dur),border-color var(--dur);user-select:none;
+}
+.rtab:hover{color:var(--t1);}
+.rtab.on{color:var(--t1);border-bottom-color:var(--acc);}
+
+#right-actions{
+  display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+.rabtn{
+  flex:1;font-family:var(--kai);font-size:12px;
+  padding:7px 8px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:none;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.rabtn:hover:not(:disabled){color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+.rabtn:disabled{opacity:.2;cursor:not-allowed;}
+.rabtn.on{color:var(--ok);border-color:rgba(94,148,112,.4);background:var(--ok-d);}
+
+/* ── Quick Commands Tab ── */
+#qcmd-panel{
+  flex:1;display:flex;flex-direction:column;overflow:hidden;
+}
+.tab-content{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.tab-content.active{display:flex;}
+
+#qcmd-head{
+  display:grid;
+  grid-template-columns:20px 1fr 30px 52px 42px 28px;
+  gap:0 6px;padding:5px 12px;
+  border-bottom:1px solid var(--bd);flex-shrink:0;
+}
+.qth{font-family:var(--kai);font-size:10px;color:var(--t3);letter-spacing:.04em;text-align:center;}
+.qth.l{text-align:left;}
+
+#qcmd-list{
+  flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0;
+  mask-image:linear-gradient(to bottom,transparent 0,black 6px,black calc(100% - 6px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,black 6px,black calc(100% - 6px),transparent 100%);
+}
+#qcmd-list::-webkit-scrollbar{width:3px;}
+#qcmd-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px;}
+
+.qrow{
+  display:grid;grid-template-columns:20px 1fr 30px 52px 42px 28px;
+  gap:0 6px;align-items:center;
+  padding:5px 12px;
+  border-bottom:1px solid rgba(255,255,255,.022);
+  transition:background var(--dur);
+  animation:row-in .18s var(--ease);
+}
+body.light .qrow{border-bottom-color:rgba(0,0,0,.05);}
+.qrow:hover{background:var(--gh);}
+
+/* row checkbox */
+.qcbx{
+  width:13px;height:13px;border-radius:2px;
+  border:1px solid var(--bd);background:rgba(0,0,0,.22);
+  cursor:pointer;appearance:none;-webkit-appearance:none;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--dur);outline:none;flex-shrink:0;
+}
+.qcbx:checked{background:var(--acc-d);border-color:var(--acc-b);}
+.qcbx:checked::after{content:'✓';font-size:8px;color:var(--acc);font-weight:700;}
+
+.qrow-main{min-width:0;}
+.qinp{
+  width:100%;background:none;border:none;border-radius:3px;
+  color:var(--t1);font-family:var(--mono);font-size:12px;
+  padding:2px 4px;outline:none;
+  border:1px solid transparent;
+  transition:background var(--dur),border-color var(--dur);
+}
+.qinp:focus{background:rgba(0,0,0,.22);border-color:var(--bd);}
+body.light .qinp:focus{background:rgba(0,0,0,.05);}
+.qinp::placeholder{color:var(--t3);}
+.qnote{
+  font-size:10px;color:var(--t3);font-family:var(--kai);
+  padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+.hex-cbx{
+  width:13px;height:13px;border-radius:2px;
+  border:1px solid var(--bd);background:rgba(0,0,0,.22);
+  cursor:pointer;appearance:none;-webkit-appearance:none;
+  display:flex;align-items:center;justify-content:center;
+  transition:all var(--dur);outline:none;margin:auto;
+}
+.hex-cbx:checked{background:rgba(154,114,180,.15);border-color:rgba(154,114,180,.4);}
+.hex-cbx:checked::after{content:'H';font-size:7px;color:#a07ab8;font-weight:700;}
+
+.delay-inp{
+  width:100%;text-align:center;
+  background:rgba(0,0,0,.2);border:1px solid var(--bd);border-radius:3px;
+  color:var(--t1);font-family:var(--mono);font-size:11px;
+  padding:3px 4px;outline:none;transition:border-color var(--dur);
+}
+body.light .delay-inp{background:rgba(0,0,0,.05);}
+.delay-inp:focus{border-color:var(--bdf);}
+
+.qsend-btn{
+  font-family:var(--kai);font-size:11px;
+  padding:4px 0;border-radius:3px;
+  border:1px solid var(--bd);background:none;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  width:100%;text-align:center;
+}
+.qsend-btn:hover:not(:disabled){color:var(--t1);border-color:var(--bdh);background:var(--gh);}
+.qsend-btn:disabled{opacity:.2;cursor:not-allowed;}
+
+.qdel-btn{
+  width:22px;height:22px;border-radius:3px;
+  border:1px solid transparent;background:none;color:var(--t3);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;font-size:11px;margin:auto;
+}
+.qdel-btn:hover{color:var(--err);border-color:rgba(158,90,90,.3);background:rgba(158,90,90,.08);}
+
+#qcmd-add{padding:8px 12px;border-top:1px solid var(--bd);flex-shrink:0;}
+
+/* ── Puzzle Blocks Tab ── */
+#blocks-wrap{
+  flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 10px 6px;
+  mask-image:linear-gradient(to bottom,transparent 0,black 7px,black calc(100% - 8px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,black 7px,black calc(100% - 8px),transparent 100%);
+}
+#blocks-wrap::-webkit-scrollbar{width:3px;}
+#blocks-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px;}
+
+#block-list{display:flex;flex-direction:column;}
+
+.qblk{
+  position:relative;overflow:visible;
+  animation:blk-in .24s var(--spring) both;
+  cursor:default;
+}
+/* tabs/notches for puzzle effect */
+.qblk:not(:last-child)::after{
+  content:'';position:absolute;
+  bottom:0;left:34px;
+  width:26px;height:13px;
+  background:var(--blk,var(--bc));
+  border-radius:0 0 6px 6px;
+}
+#block-list .qblk+.qblk .blk-hdr{
+  clip-path:polygon(0 0,34px 0,34px 13px,60px 13px,60px 0,100% 0,100% 100%,0 100%);
+}
+#block-list .qblk:first-child .blk-hdr{border-radius:8px 8px 0 0;}
+#block-list .qblk:last-child  .blk-body{border-radius:0 0 8px 8px;}
+#block-list .qblk:only-child  .blk-hdr {border-radius:8px 8px 0 0;}
+#block-list .qblk:only-child  .blk-body{border-radius:0 0 8px 8px;}
+
+/* type colors */
+.qblk[data-t=led]    {--blk:var(--bl);}
+.qblk[data-t=motor]  {--blk:var(--bm);}
+.qblk[data-t=pwm]    {--blk:var(--bp);}
+.qblk[data-t=sensor] {--blk:var(--bs);}
+.qblk[data-t=hex]    {--blk:var(--bh);}
+.qblk[data-t=custom] {--blk:var(--bc);}
+
+.blk-hdr{
+  padding:7px 10px 7px 11px;
+  background:var(--blk,var(--bc));
+  display:flex;align-items:center;gap:6px;
+}
+.bgrip{color:rgba(255,255,255,.35);cursor:grab;flex-shrink:0;display:flex;align-items:center;padding:0 1px;}
+.bgrip:hover{color:rgba(255,255,255,.7);}
+.bgrip:active{cursor:grabbing;}
+.bcbx{
+  width:13px;height:13px;border-radius:3px;
+  border:1.5px solid rgba(255,255,255,.3);background:rgba(0,0,0,.22);
+  cursor:pointer;appearance:none;-webkit-appearance:none;
+  display:flex;align-items:center;justify-content:center;transition:all var(--dur);outline:none;flex-shrink:0;
+}
+.bcbx:checked{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55);}
+.bcbx:checked::after{content:'✓';font-size:9px;color:#fff;font-weight:700;}
+.btype{
+  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.06em;
+  color:rgba(255,255,255,.9);padding:1px 5px;border-radius:3px;
+  background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.14);flex-shrink:0;
+}
+.bcmd{
+  flex:1;font-family:var(--mono);font-size:11.5px;
+  color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;
+}
+.bhacts{display:flex;align-items:center;gap:3px;flex-shrink:0;}
+.bexp{
+  width:20px;height:20px;border-radius:3px;
+  border:none;background:none;color:rgba(255,255,255,.35);
+  cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.bexp:hover{color:rgba(255,255,255,.8);}
+.bexp svg{transition:transform var(--dur) var(--ease);}
+.bexp.open svg{transform:rotate(90deg);}
+.bsend{
+  width:22px;height:22px;border-radius:3px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.2);
+  color:rgba(255,255,255,.65);cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;font-size:10px;
+}
+.bsend:hover:not(:disabled){background:rgba(0,0,0,.4);color:#fff;border-color:rgba(255,255,255,.38);}
+.bsend:disabled{opacity:.2;cursor:not-allowed;}
+.bdel{
+  width:22px;height:22px;border-radius:3px;
+  border:1px solid transparent;background:none;
+  color:rgba(255,255,255,.25);cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+}
+.bdel:hover{color:rgba(255,80,80,.8);border-color:rgba(255,60,60,.3);background:rgba(255,40,40,.12);}
+
+.blk-body{
+  background:rgba(255,255,255,.022);
+  border:1px solid rgba(255,255,255,.055);border-top:none;
+  padding:0;max-height:0;overflow:hidden;
+  transition:max-height .3s var(--ease),padding .28s;
+}
+.blk-body.open{max-height:180px;padding:9px 10px 10px;}
+.binp{
+  width:100%;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.07);
+  border-radius:4px;color:var(--t1);font-family:var(--mono);font-size:12px;
+  padding:5px 8px;outline:none;transition:border-color var(--dur);
+}
+.binp:focus{border-color:rgba(255,255,255,.18);}
+.binp::placeholder{color:var(--t3);}
+.bmeta{display:flex;align-items:center;gap:7px;margin-top:7px;}
+.bdelay{
+  width:50px;text-align:center;
+  background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.07);border-radius:4px;
+  color:var(--t2);font-family:var(--mono);font-size:11px;padding:3px 4px;outline:none;
+  transition:border-color var(--dur);
+}
+.bdelay:focus{border-color:rgba(255,255,255,.18);}
+.bdunit{font-size:10px;color:var(--t3);font-family:var(--kai);}
+.bhex{
+  display:flex;align-items:center;gap:4px;cursor:pointer;
+  font-family:var(--mono);font-size:10.5px;color:rgba(255,255,255,.32);
+  transition:color var(--dur);user-select:none;
+}
+.bhex:hover{color:rgba(185,130,200,.8);}
+.bhex input{width:12px;height:12px;accent-color:#a07ab8;cursor:pointer;}
+.bnote{
+  width:100%;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.05);
+  border-radius:4px;color:var(--t2);font-family:var(--kai);font-size:11px;
+  padding:3px 7px;outline:none;margin-top:6px;transition:border-color var(--dur);
+}
+.bnote:focus{border-color:rgba(255,255,255,.14);}
+.bnote::placeholder{color:var(--t4);}
+
+.qblk.dragging{opacity:.35;}
+.qblk.drag-over .blk-hdr{box-shadow:inset 0 0 0 2px rgba(255,255,255,.28);}
+
+#blocks-add{padding:8px 10px 12px;border-top:1px solid var(--bd);flex-shrink:0;}
+.palette{display:none;flex-wrap:wrap;gap:5px;padding:7px 0 2px;}
+.palette.open{display:flex;animation:blur-in .2s var(--ease) both;}
+.pc{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:var(--rs);border:1px solid;background:none;
+  cursor:pointer;transition:all var(--dur);outline:none;font-family:var(--kai);font-size:12px;
+}
+.pc:hover{filter:brightness(1.35);transform:scale(1.02);}
+.pc:active{transform:scale(.96);}
+
+/* ═══════════════════════════════════
+   Status bar
+═══════════════════════════════════ */
+#statusbar{
+  height:var(--bh);display:flex;align-items:center;
+  border-top:1px solid var(--bd);background:rgba(255,255,255,.012);
+  backdrop-filter:blur(10px);flex-shrink:0;overflow:hidden;
+  transition:background .35s,border-color .35s;
+}
+.sbit{
+  display:flex;align-items:center;gap:5px;
+  padding:0 13px;height:100%;border-right:1px solid var(--bd);
+  font-family:var(--kai);font-size:11px;color:var(--t2);white-space:nowrap;
+}
+.sbit:last-child{border-right:none;margin-left:auto;}
+.sbval{font-family:var(--mono);font-size:11px;color:var(--t1);}
+.spip{width:6px;height:6px;border-radius:50%;background:var(--err);flex-shrink:0;transition:all var(--dur);}
+.spip.connected  {background:var(--ok); box-shadow:0 0 4px var(--ok);}
+.spip.connecting {background:var(--warn);animation:pip-blink .85s infinite;}
+#sb-notice{flex:1;padding:0 13px;font-family:var(--kai);font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ═══════════════════════════════════
+   Settings button — bottom-left fixed
+═══════════════════════════════════ */
+#settings-btn{
+  position:fixed;bottom:40px;left:16px;z-index:500;
+  width:34px;height:34px;border-radius:9px;
+  border:1px solid var(--bdh);background:rgba(11,12,15,.88);
+  backdrop-filter:blur(16px);
+  color:var(--t2);cursor:pointer;transition:all var(--dur);outline:none;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);
+}
+body.light #settings-btn{background:rgba(242,239,233,.92);}
+#settings-btn:hover{color:var(--t1);border-color:var(--bdh);box-shadow:0 4px 20px rgba(0,0,0,.45);}
+
+#settings-panel{
+  position:fixed;bottom:82px;left:16px;z-index:501;
+  background:rgba(11,12,15,.97);
+  backdrop-filter:blur(28px) saturate(1.5);
+  border:1px solid var(--bdh);border-radius:var(--r);
+  padding:8px;width:252px;
+  opacity:0;pointer-events:none;
+  filter:blur(8px);
+  transform:translateY(8px);
+  transition:opacity .22s var(--ease),transform .22s var(--spring),filter .22s var(--ease);
+}
+body.light #settings-panel{background:rgba(248,245,240,.97);}
+#settings-panel.open{
+  opacity:1;pointer-events:auto;filter:blur(0);transform:translateY(0);
+  animation:settings-in .24s var(--spring) both;
+}
+#settings-panel.closing{
+  animation:settings-out .2s var(--ease) forwards;
+  pointer-events:none;
+}
+.sp-title{font-family:var(--kai);font-size:11px;color:var(--t3);letter-spacing:.06em;padding:4px 7px 6px;}
+
+/* settings item */
+.sp-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 8px;border-radius:var(--rs);
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+  cursor:pointer;user-select:none;transition:background var(--dur);
+}
+.sp-item:hover{background:var(--gh);color:var(--t1);}
+.sp-item.passive{cursor:default;}
+.sp-item.passive:hover{background:none;color:var(--t2);}
+.sp-name{
+  font-family:var(--kai);font-size:11px;color:var(--acc);
+  padding:2px 8px;border-radius:999px;border:1px solid var(--acc-b);background:var(--acc-d);
+  max-width:112px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;
+}
+.sp-sel{
+  min-width:104px;
+  background:rgba(0,0,0,.22);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--kai);font-size:12px;
+  padding:4px 24px 4px 8px;outline:none;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23716c65' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+  transition:border-color var(--dur),background var(--dur);
+}
+body.light .sp-sel{background-color:rgba(0,0,0,.05);}
+.sp-sel:focus{border-color:var(--bdf);}
+.sp-stack{
+  padding:8px;border-radius:var(--rs);
+  border:1px solid transparent;
+  transition:background var(--dur),border-color var(--dur);
+}
+.sp-stack:hover{background:var(--gh);border-color:rgba(255,255,255,.03);}
+.sp-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+}
+.sp-btns{display:flex;gap:6px;margin-top:8px;}
+.sp-mini{
+  flex:1;
+  font-family:var(--kai);font-size:11px;letter-spacing:.04em;
+  padding:6px 8px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:var(--glass);color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+}
+.sp-mini:hover{background:var(--gh);border-color:var(--bdh);color:var(--t1);}
+.sp-mini:disabled{opacity:.28;cursor:not-allowed;}
+.sp-hint{
+  margin-top:7px;
+  font-family:var(--kai);font-size:10px;line-height:1.65;color:var(--t3);
+}
+#shell{position:relative;z-index:1;}
+
+
+/* ═══════════════════════════════════
+   Responsive
+═══════════════════════════════════ */
+@media (max-width: 980px){
+  :root{--lw:100%;--rw:100%;}
+
+  html,body{overflow:auto;height:auto;}
+  body{min-height:100vh;}
+  #shell{height:auto;min-height:100vh;}
+
+  #topbar{
+    height:auto;min-height:var(--th);
+    padding:10px 12px;gap:6px;
+    flex-wrap:wrap;align-content:center;
+  }
+  .logo{font-size:16px;margin-right:2px;}
+  .tb-right{width:100%;margin-left:0;justify-content:flex-end;flex-wrap:wrap;}
+  .dd-wrap{order:10;}
+  .dd-panel.center-align{left:0;right:auto;transform:translateY(-8px) scale(.95);}
+  .dd-panel.center-align.open{transform:translateY(0) scale(1);}
+
+  #workspace{flex-direction:column;overflow:visible;}
+  #left,
+  #center,
+  #right{
+    width:100%;min-width:0;
+    border-right:none;border-left:none;
+  }
+  #left{
+    max-height:38vh;
+    border-bottom:1px solid var(--bd);
+  }
+  #center{
+    min-height:42vh;
+  }
+  #right{
+    max-height:42vh;
+    border-top:1px solid var(--bd);
+    transition:
+      max-height .48s cubic-bezier(.4,0,.2,1),
+      opacity .35s ease,
+      filter .42s ease,
+      border-color .3s;
+  }
+  #right.hidden{
+    width:100%!important;min-width:0!important;max-height:0!important;
+    opacity:0;filter:blur(10px);
+    border-top-color:transparent;
+    overflow:hidden;
+    pointer-events:none;
+  }
+
+  #left-body,
+  #term-out,
+  #blocks-wrap{padding-left:12px;padding-right:12px;}
+  #right-hdr,#send-bar,#send-row,#right-actions,#settings-panel{padding-left:12px;padding-right:12px;}
+
+  #send-bar{overflow-x:auto;overflow-y:hidden;}
+  #send-bar::-webkit-scrollbar{display:none;}
+  #send-row{flex-wrap:wrap;}
+  #btn-send{width:100%;justify-content:center;}
+
+  #settings-btn{left:12px;bottom:12px;}
+  #settings-panel{
+    left:12px;bottom:64px;
+    width:min(320px,calc(100vw - 24px));
+  }
+}
+
+@media (max-width: 680px){
+  :root{--th:56px;}
+
+  body{font-size:12px;}
+  #topbar{padding:8px 10px;gap:5px;}
+  .logo{font-size:15px;letter-spacing:.08em;}
+  .tb-tag,.dd-btn,#btn-rp,#conn-chip{font-size:11px;}
+  .tb-tag,.dd-btn,#btn-rp{padding:5px 10px;}
+  #conn-chip{padding:6px 12px;}
+  .tb-btn{width:30px;height:28px;}
+
+  .tab-row{padding:0 10px;overflow-x:auto;overflow-y:hidden;}
+  #left-body{padding:8px 10px 18px;}
+  .btn-g{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .sgrid{grid-template-columns:1fr;}
+
+  #center{min-height:38vh;}
+  #term-wrap::before,#term-wrap::after{height:28px;}
+  #term-out{padding:12px 10px;font-size:12px;line-height:1.68;}
+  .t-row{grid-template-columns:64px 30px 1fr;gap:0 8px;}
+  .t-ts,.t-dir{font-size:10px;}
+  .t-msg{font-size:11.5px;}
+
+  #send-bar{height:auto;min-height:32px;padding-top:6px;padding-bottom:6px;}
+  #send-row{padding:8px 10px;gap:7px;}
+  #send-inp{min-height:38px;height:38px;font-size:12px;}
+  #btn-send{height:38px;}
+
+  #right{max-height:none;}
+  #right-hdr{height:50px;padding:0 10px;}
+  .rhtitle{font-size:13px;}
+  #right-tabs,#right-actions{padding-left:10px;padding-right:10px;}
+  #rtab-qcmd-panel,#rtab-blocks-panel{padding-left:10px;padding-right:10px;}
+
+  #settings-btn{width:42px;height:42px;}
+  #settings-panel{padding:7px;}
+  .sp-name{max-width:100px;}
+
+  .modal-card{
+    width:min(92vw,760px);
+    max-height:min(82vh,760px);
+    margin:16px;
+  }
+}
+
+
+/* ═══════════════════════════════════
+   Welcome Modal
+═══════════════════════════════════ */
+#modal-bg{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,.65);
+  backdrop-filter:blur(14px) saturate(1.2);
+  display:flex;align-items:center;justify-content:center;
+  animation:modal-bg .4s ease;
+}
+#modal-bg.closing{
+  animation:none;
+  opacity:0;transition:opacity .3s ease;
+  pointer-events:none;
+}
+.modal-card{
+  background:rgba(13,14,18,.97);
+  border:1px solid var(--bdh);border-radius:12px;
+  width:580px;max-width:92vw;max-height:84vh;
+  overflow-y:auto;
+  animation:modal-card .42s var(--spring) both;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+body.light .modal-card{background:rgba(248,245,240,.98);}
+.modal-card::-webkit-scrollbar{width:4px;}
+.modal-card::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+.modal-card::-webkit-scrollbar-track{background:transparent;}
+
+.modal-hdr{
+  padding:28px 30px 20px;
+  border-bottom:1px solid var(--bd);
+}
+.modal-title{
+  font-family:var(--kai);font-size:20px;font-weight:700;
+  letter-spacing:.08em;color:var(--t1);margin-bottom:6px;
+}
+.modal-ver{font-family:var(--mono);font-size:11px;color:var(--t3);}
+.modal-body{padding:22px 30px;}
+
+.m-section{margin-bottom:22px;}
+.m-stitle{
+  font-family:var(--kai);font-size:13px;font-weight:600;letter-spacing:.06em;
+  color:var(--acc);margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.m-stitle::after{content:'';flex:1;height:1px;background:var(--bd);}
+
+.m-text{font-family:var(--kai);font-size:12px;color:var(--t2);line-height:1.85;}
+.m-list{list-style:none;padding:0;}
+.m-list li{
+  font-family:var(--kai);font-size:12px;color:var(--t2);line-height:1.8;
+  padding:3px 0 3px 16px;position:relative;
+}
+.m-list li::before{content:'·';position:absolute;left:4px;color:var(--acc);}
+
+.m-note{
+  background:rgba(255,255,255,.025);border:1px solid var(--bd);border-radius:var(--rs);
+  padding:9px 12px;font-family:var(--kai);font-size:11.5px;color:var(--t2);line-height:1.8;
+  margin-top:8px;
+}
+body.light .m-note{background:rgba(0,0,0,.03);}
+
+.modal-footer{
+  padding:16px 30px 24px;
+  border-top:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+.modal-contact{
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+}
+.modal-email{
+  color:var(--acc);text-decoration:none;font-family:var(--mono);font-size:12px;
+  border-bottom:1px solid var(--acc-b);padding-bottom:1px;
+  transition:color var(--dur),border-color var(--dur);
+}
+.modal-email:hover{color:var(--t1);border-color:var(--bdh);}
+.modal-close{
+  font-family:var(--kai);font-size:13px;letter-spacing:.05em;
+  padding:9px 28px;border-radius:var(--rs);
+  border:1px solid var(--bdh);background:var(--gh);color:var(--t1);
+  cursor:pointer;transition:all var(--dur);outline:none;
+}
+.modal-close:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);}
+.modal-close:active{opacity:.7;transform:scale(.97);}
+
+/* ═══════════════════════════════════
+   Toast
+═══════════════════════════════════ */
+#toasts{
+  position:fixed;bottom:36px;right:18px;z-index:999;
+  display:flex;flex-direction:column-reverse;gap:6px;pointer-events:none;
+}
+.toast{
+  background:rgba(13,14,18,.97);backdrop-filter:blur(20px);
+  border:1px solid var(--bdh);border-radius:var(--r);
+  padding:10px 15px;font-family:var(--kai);font-size:12px;color:var(--t1);
+  max-width:260px;
+  animation:blur-in .22s var(--spring) both,t-out .28s ease 3.3s forwards;
+  pointer-events:auto;display:flex;align-items:center;gap:7px;
+}
+body.light .toast{background:rgba(248,245,240,.97);}
+.toast::before{content:'';width:4px;height:4px;border-radius:50%;flex-shrink:0;background:var(--t3);}
+.toast.ok::before  {background:var(--ok);}
+.toast.warn::before{background:var(--warn);}
+.toast.err::before {background:var(--err);}
+</style>
+</head>
+<body>
+<div id="bg-layer"></div>
+<div id="bg-overlay"></div>
+<div id="shell">
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div id="topbar">
+
+  <span class="logo">LanMonitor</span>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-tag on" id="tag-term" onclick="setMode('term',this)">Terminal</button>
+  <button class="tb-tag"    id="tag-hex"  onclick="setMode('hex',this)">HEX</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- All display options in one dropdown -->
+  <div class="dd-wrap">
+    <button class="dd-btn" id="dd-main-btn" onclick="toggleDDMain()">
+      显示选项
+      <svg class="chev" width="9" height="6" viewBox="0 0 10 7" fill="none">
+        <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="dd-panel center-align" id="dd-main-panel" style="min-width:190px;">
+      <div class="dd-section">接收显示</div>
+      <label class="dd-item"><input type="checkbox" id="o-rxhex" checked onchange="O.rxHex=this.checked"/> 接收 HEX 显示</label>
+      <label class="dd-item"><input type="checkbox" id="o-scroll" checked onchange="O.autoScroll=this.checked"/> 自动滚动</label>
+      <label class="dd-item"><input type="checkbox" id="o-ts" onchange="O.showTs=this.checked"/> 显示时间戳</label>
+      <label class="dd-item"><input type="checkbox" id="o-wrap" onchange="setWrap(this.checked)"/> 自动换行</label>
+      <div class="dd-section">发送选项</div>
+      <label class="dd-item"><input type="checkbox" id="o-txhex" checked onchange="O.txHex=this.checked"/> 发送 HEX 显示</label>
+      <label class="dd-item"><input type="checkbox" id="o-nl" checked onchange="O.nl=this.checked"/> 自动追加 \n</label>
+      <label class="dd-item"><input type="checkbox" id="o-csum" onchange="setCsum(this.checked)"/> 显示 CRC 校验</label>
+      <div class="dd-sep"></div>
+      <button class="dd-action" onclick="clearTerm();closeDDMain()">清空接收区</button>
+    </div>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- Export -->
+  <button class="tb-btn" title="导出日志" onclick="exportLog()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <path d="M3 10v3a1 1 0 001 1h8a1 1 0 001-1v-3M8 2v8M5.5 7.5L8 10l2.5-2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+
+  <div class="tb-right">
+    <!-- Connection -->
+    <div id="conn-chip" onclick="toggleConn()">
+      <div id="pip"></div>
+      <span id="conn-lbl">未连接</span>
+    </div>
+
+    <!-- Help / manual -->
+    <button class="tb-btn" title="使用说明" onclick="showModal()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M6.5 6.2c0-1 .8-1.8 1.8-1.8s1.5.6 1.5 1.5c0 1.2-1.5 1.8-1.5 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="8" cy="11" r=".7" fill="currentColor"/>
+      </svg>
+    </button>
+
+    <!-- Right panel toggle -->
+    <button id="btn-rp" class="on" onclick="toggleRight()">
+      <svg width="13" height="11" viewBox="0 0 14 12" fill="none">
+        <rect x=".5" y=".5" width="13" height="11" rx="1.5" stroke="currentColor"/>
+        <line x1="9.5" y1="1" x2="9.5" y2="11" stroke="currentColor"/>
+      </svg>
+      <span id="rp-lbl">指令面板</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════ WORKSPACE ═══════════ -->
+<div id="workspace">
+
+  <!-- ─ LEFT ─ -->
+  <div id="left">
+    <div class="tab-row">
+      <div class="tab-item on" onclick="switchLTab('ble',this)">蓝牙 BLE</div>
+      <div class="tab-item"    onclick="switchLTab('uart',this)">串口 UART</div>
+    </div>
+    <div id="left-body">
+
+      <!-- BLE -->
+      <div id="tab-ble" class="tab-content active">
+
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 0 4px;">
+          <div id="left-pip" class="spip"></div>
+          <span id="left-lbl" style="font-family:var(--kai);font-size:13px;color:var(--t2);flex:1;">未连接</span>
+          <button class="btn" id="btn-conn" onclick="toggleConn()" style="padding:5px 12px;">连接</button>
+        </div>
+
+        <!-- advanced config accordion (collapsed by default) -->
+        <div class="acc">
+          <div class="ah" onclick="toggleAcc(this)">
+            <span class="at">高级配置</span>
+            <span class="achev"><svg width="5" height="9" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          </div>
+          <div class="ab">
+            <div class="ai">
+              <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-bottom:4px;">服务 UUID</div>
+              <input class="inp" id="svc-uuid" value="0000ffe0-0000-1000-8000-00805f9b34fb" style="margin-bottom:8px;"/>
+              <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-bottom:4px;">特征 UUID</div>
+              <input class="inp" id="char-uuid" value="0000ffe1-0000-1000-8000-00805f9b34fb"/>
+              <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-top:7px;line-height:1.8;">HM-10 默认配置 · 按需修改</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="st">设备控制</div>
+
+        <!-- LED -->
+        <div class="acc">
+          <div class="ah" onclick="toggleAcc(this)">
+            <span class="at">指示灯</span>
+            <span class="abadge" id="ab-led">关</span>
+            <span class="achev"><svg width="5" height="9" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          </div>
+          <div class="ab">
+            <div class="ai">
+              <div class="lrow"><div class="lpip" id="led-pip"></div><span class="llbl" id="led-lbl">当前关闭</span></div>
+              <div class="btn-g">
+                <button class="btn ctrl" id="btn-lon"  onclick="sendLED(true)">开启</button>
+                <button class="btn ctrl" id="btn-loff" onclick="sendLED(false)">关闭</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PWM -->
+        <div class="acc">
+          <div class="ah" onclick="toggleAcc(this)">
+            <span class="at">PWM 亮度</span>
+            <span class="abadge" id="ab-pwm">50%</span>
+            <span class="achev"><svg width="5" height="9" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          </div>
+          <div class="ab">
+            <div class="ai">
+              <div class="slrow">
+                <input type="range" id="pwm-sl" min="0" max="100" value="50" style="--pct:50%"
+                       oninput="onPwmIn(this)" onchange="sendPWM()" disabled/>
+                <span class="slval" id="pwm-val">50</span>
+              </div>
+              <div style="font-family:var(--kai);font-size:11px;color:var(--t3);">松开后发送 PWM:xxx</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motor -->
+        <div class="acc">
+          <div class="ah" onclick="toggleAcc(this)">
+            <span class="at">电机驱动</span>
+            <span class="abadge" id="ab-motor">停止</span>
+            <span class="achev"><svg width="5" height="9" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          </div>
+          <div class="ab">
+            <div class="ai">
+              <div class="mrow"><span class="mic" id="m-ic">◎</span><span class="mlbl" id="m-lbl">停止</span></div>
+              <div class="btn-g">
+                <button class="btn ctrl" id="btn-mf" onclick="sendMotor('F')">正转</button>
+                <button class="btn ctrl" id="btn-mb" onclick="sendMotor('B')">反转</button>
+                <button class="btn ctrl" id="btn-ms" onclick="sendMotor('S')">停止</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sensor -->
+        <div class="acc">
+          <div class="ah" onclick="toggleAcc(this)">
+            <span class="at">传感器数据</span>
+            <span class="abadge" id="ab-sensor">待采集</span>
+            <span class="achev"><svg width="5" height="9" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          </div>
+          <div class="ab">
+            <div class="ai">
+              <div class="sgrid">
+                <div class="scard"><div class="sk">温度</div><div class="sv" id="sv-temp">--.-</div><div class="su">°C</div></div>
+                <div class="scard"><div class="sk">湿度</div><div class="sv" id="sv-hum">--.-</div><div class="su">%</div></div>
+                <div class="scard"><div class="sk">距离</div><div class="sv" id="sv-dist">---</div><div class="su">cm</div></div>
+              </div>
+              <button class="btn btn-f ctrl" style="margin-bottom:9px;" onclick="sendRaw('GET_DATA')">请求一次</button>
+              <div class="tgw" onclick="toggleAR()">
+                <label class="tgl"><input type="checkbox" id="tog-auto" disabled/><div class="tgt"></div><div class="tgh"></div></label>
+                <span class="tglbl">自动刷新 2s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-ble -->
+
+      <!-- UART -->
+      <div id="tab-uart" class="tab-content">
+        <div class="st" style="margin-top:8px;">串口配置</div>
+        <div class="sr"><span class="sl">波特率</span>
+          <select class="sel"><option>9600</option><option>19200</option><option>38400</option><option selected>115200</option><option>230400</option></select>
+        </div>
+        <div class="sr"><span class="sl">数据位</span>
+          <select class="sel"><option>5</option><option>6</option><option>7</option><option selected>8</option></select>
+        </div>
+        <div class="sr"><span class="sl">校验位</span>
+          <select class="sel"><option selected>None</option><option>Odd</option><option>Even</option></select>
+        </div>
+        <div class="sr"><span class="sl">停止位</span>
+          <select class="sel"><option selected>1</option><option>1.5</option><option>2</option></select>
+        </div>
+        <div class="sr"><span class="sl">流控制</span>
+          <select class="sel"><option selected>None</option><option>RTS/CTS</option><option>XON/XOFF</option></select>
+        </div>
+        <button class="btn btn-f" style="margin-top:14px;" disabled>选择串口设备</button>
+        <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-top:9px;line-height:1.8;">
+          Web Serial API 需 Chrome 89+<br/>仅 HTTPS / localhost 可用
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─ CENTER ─ -->
+  <div id="center">
+    <div id="term-wrap">
+      <div id="term-empty">
+        <div class="eic">◎</div>
+        <div class="etx">连接设备后开始接收数据</div>
+      </div>
+      <div id="term-out"></div>
+    </div>
+    <div id="send-zone">
+      <div id="send-bar">
+        <button class="stag on"    id="st-nl"   onclick="togSTag(this,'nl')">自动 \n</button>
+        <button class="stag"       id="st-hxs"  onclick="togSTag(this,'hexSend')">HEX 发送</button>
+        <div class="ssep"></div>
+        <button class="stag"       id="st-auto" onclick="togAutoSend()">自动发送</button>
+        <input class="ninp" id="send-iv" type="number" min="100" value="1000" style="width:52px;"/>
+        <span style="font-size:11px;color:var(--t3);font-family:var(--kai);">ms</span>
+        <div class="ssep" style="margin:0 2px;"></div>
+        <button class="stag" id="st-cs" onclick="togSTag(this,'checksum')">校验和</button>
+        <span id="csum-show" style="display:none;font-family:var(--mono);font-size:11px;color:#a07ab8;">CRC:<span id="csum-val">--</span></span>
+        <div class="ssp"></div>
+        <button class="stag danger" onclick="document.getElementById('send-inp').value=''">清空</button>
+      </div>
+      <div id="send-row">
+        <textarea id="send-inp" placeholder="输入发送内容，Enter 发送，Shift+Enter 换行…" disabled onkeydown="onSKey(event)" oninput="onSInput()"></textarea>
+        <button id="btn-send" disabled onclick="doSend()">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 6-12 6V8.5l9-2.5-9-2.5V1z" fill="currentColor"/></svg>
+          发送
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ RIGHT ─ -->
+  <div id="right">
+    <div id="right-hdr">
+      <span class="rhtitle">快捷指令</span>
+      <div class="lpwrap">
+        <span class="lplbl">循环间隔</span>
+        <input class="lpinp" id="loop-iv" type="number" min="100" value="5000"/>
+        <span class="lpunit">ms</span>
+      </div>
+    </div>
+
+    <!-- tabs -->
+    <div id="right-tabs">
+      <div class="rtab on" id="rtab-qcmd"   onclick="switchRTab('qcmd',this)">快捷指令</div>
+      <div class="rtab"    id="rtab-blocks" onclick="switchRTab('blocks',this)">积木编程</div>
+    </div>
+
+    <div id="right-actions">
+      <button class="rabtn ctrl" id="ra-sel"  onclick="sendSelected()">发送选中</button>
+      <button class="rabtn ctrl" id="ra-loop" onclick="togLoop()">循环发送</button>
+    </div>
+
+    <!-- Quick commands tab -->
+    <div id="rtab-qcmd-panel" class="tab-content active">
+      <div id="qcmd-head">
+        <span class="qth">启</span>
+        <span class="qth l">内容</span>
+        <span class="qth">H</span>
+        <span class="qth">延时</span>
+        <span class="qth">操作</span>
+        <span class="qth"></span>
+      </div>
+      <div id="qcmd-list"></div>
+      <div id="qcmd-add">
+        <button class="btn btn-f ctrl-q" onclick="addQCmd()">
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          新建快捷指令
+        </button>
+      </div>
+    </div>
+
+    <!-- Blocks tab -->
+    <div id="rtab-blocks-panel" class="tab-content">
+      <div id="blocks-wrap">
+        <div id="block-list"></div>
+      </div>
+      <div id="blocks-add">
+        <button class="btn btn-f" id="btn-palette" onclick="togPalette()" style="margin-bottom:6px;">
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          新建积木块
+        </button>
+        <div class="palette" id="palette">
+          <button class="pc" style="color:var(--bl);border-color:rgba(196,146,74,.35);background:rgba(196,146,74,.07);" onclick="addBlock('led','LED_ON','LED','打开 LED');togPalette()">LED</button>
+          <button class="pc" style="color:var(--bm);border-color:rgba(94,148,112,.35);background:rgba(94,148,112,.07);" onclick="addBlock('motor','MOTOR:F','电机','电机正转');togPalette()">电机</button>
+          <button class="pc" style="color:var(--bp);border-color:rgba(122,106,171,.35);background:rgba(122,106,171,.07);" onclick="addBlock('pwm','PWM:50','PWM','亮度 50%');togPalette()">PWM</button>
+          <button class="pc" style="color:var(--bs);border-color:rgba(90,122,158,.35);background:rgba(90,122,158,.07);" onclick="addBlock('sensor','GET_DATA','传感器','请求数据');togPalette()">传感器</button>
+          <button class="pc" style="color:var(--bh);border-color:rgba(154,114,180,.35);background:rgba(154,114,180,.07);" onclick="addBlock('hex','01 02 03','HEX','HEX 数据',true);togPalette()">HEX</button>
+          <button class="pc" style="color:var(--t2);border-color:var(--bd);background:var(--glass);" onclick="addBlock('custom','','CMD','');togPalette()">自定义</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /right -->
+
+</div><!-- /workspace -->
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <div class="sbit">
+    <div class="spip" id="sb-pip"></div>
+    <span id="sb-status" style="font-family:var(--kai);">等待连接</span>
+  </div>
+  <div id="sb-notice">就绪 · 点击「连接」配对 BLE 设备</div>
+  <div class="sbit">
+    <span style="color:var(--tx);font-family:var(--kai);">Tx</span>
+    <span class="sbval" id="sb-tx">0 B</span>
+  </div>
+  <div class="sbit">
+    <span style="color:var(--rx);font-family:var(--kai);">Rx</span>
+    <span class="sbval" id="sb-rx">0 B</span>
+  </div>
+  <div class="sbit" style="border-right:none;">
+    <span style="font-family:var(--kai);color:var(--t2);">日志</span>
+    <span class="sbval" id="sb-logn">0</span>
+  </div>
+</div>
+
+</div><!-- /shell -->
+
+<!-- Settings button (bottom-left fixed) -->
+<button id="settings-btn" onclick="togSettings()" title="设置">
+  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+    <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+</button>
+<div id="settings-panel">
+  <div class="sp-title">设置</div>
+
+  <div class="sp-item passive">
+    <span id="sp-theme-lbl">当前主题</span>
+    <span class="sp-name" id="sp-theme-name">兰式古典</span>
+  </div>
+
+  <div class="sp-item" onclick="toggleLight()">
+    <span id="sp-light-lbl">白天模式</span>
+    <label class="tgl" style="pointer-events:none;">
+      <input type="checkbox" id="light-cb"/>
+      <div class="tgt"></div><div class="tgh"></div>
+    </label>
+  </div>
+
+  <div class="sp-item">
+    <span id="sp-lang-lbl">界面语言</span>
+    <select class="sp-sel" id="lang-sel" onchange="changeLang(this.value)" onclick="event.stopPropagation()">
+      <option value="zh">简体中文</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <div class="sp-stack" onclick="pickBg(event)">
+    <div class="sp-row">
+      <span id="sp-bg-lbl">自定义背景</span>
+      <span class="sp-name" id="bg-state">默认</span>
+    </div>
+    <div class="sp-btns">
+      <button class="sp-mini" id="bg-upload-btn" onclick="pickBg(event)">上传图片</button>
+      <button class="sp-mini" id="bg-clear-btn" onclick="clearBg(event)">恢复默认</button>
+    </div>
+    <div class="sp-hint" id="sp-bg-hint">仅更换背景，不影响当前布局与毛玻璃风格</div>
+    <input type="file" id="bg-file" accept="image/*" hidden onchange="onBgPicked(event)"/>
+  </div>
+</div>
+
+<!-- Welcome modal -->
+<div id="modal-bg">
+  <div class="modal-card">
+    <div class="modal-hdr">
+      <div class="modal-title">LanMonitor</div>
+      <div class="modal-ver">BLE 调试终端 · v2.0 · WebBluetooth API</div>
+    </div>
+    <div class="modal-body">
+
+      <div class="m-section">
+        <div class="m-stitle">产品简介</div>
+        <div class="m-text">
+          LanMonitor 是一款运行于 Chrome 浏览器的 BLE 串口调试工具，专为 STM32、ESP32 等嵌入式设备开发与调试而设计。基于 WebBluetooth API 实现，无需安装任何客户端软件，打开网页即可使用。
+        </div>
+      </div>
+
+      <div class="m-section">
+        <div class="m-stitle">功能说明</div>
+        <ul class="m-list">
+          <li><b>蓝牙连接：</b>支持 BLE 4.0 HM-10 模块，可自定义 Service UUID 与 Characteristic UUID，点击右上角「连接」即可配对</li>
+          <li><b>实时终端：</b>完整接收/发送数据流，支持 ASCII 与 HEX 双模式，可开启时间戳与自动换行</li>
+          <li><b>快捷指令：</b>预置常用指令列表，支持单条发送、批量发送（发送选中）和按时间间隔循环发送</li>
+          <li><b>积木编程：</b>可视化拖拽式指令编排，每块支持独立延时、HEX 模式和注释，模拟 Scratch 积木拼图</li>
+          <li><b>设备控制：</b>左侧面板提供 LED、PWM 亮度、电机驱动、传感器读取的直观快捷控制</li>
+          <li><b>自动发送：</b>发送区支持定时自动发送，积木面板支持循环执行选中的指令序列</li>
+          <li><b>显示选项：</b>顶栏「显示选项」下拉菜单集中管理所有接收/发送的显示偏好设置</li>
+          <li><b>日志导出：</b>点击顶栏导出按钮，将完整通信日志保存为 .txt 文件</li>
+          <li><b>外观切换：</b>左下角设置面板支持白天模式、界面语言与自定义背景切换</li>
+        </ul>
+      </div>
+
+      <div class="m-section">
+        <div class="m-stitle">使用步骤</div>
+        <ul class="m-list">
+          <li>确认已使用 Chrome / Chromium 浏览器（版本 56+），移动端使用 Chrome for Android</li>
+          <li>确认页面运行于 HTTPS 或 localhost 环境（WebBluetooth API 安全限制）</li>
+          <li>点击右上角「连接」，在弹出的系统选择框中选择目标 BLE 设备</li>
+          <li>连接成功后，左侧控制区解锁，终端开始实时接收数据</li>
+          <li>在发送区输入指令，按 Enter 发送（Shift+Enter 换行）</li>
+          <li>右侧「快捷指令」添加常用指令；「积木编程」编排复杂指令序列</li>
+        </ul>
+      </div>
+
+      <div class="m-section">
+        <div class="m-stitle">默认指令协议</div>
+        <div class="m-note">
+          LED_ON / LED_OFF · PWM:0~100 · MOTOR:F / MOTOR:B / MOTOR:S · GET_DATA<br/>
+          返回格式：TEMP:xx.x · HUM:xx.x · DIST:xxx · STATUS:OK<br/>
+          所有指令末尾自动追加换行符 \n（可在显示选项中关闭）
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <div class="modal-contact">
+        如有问题或建议，欢迎联系：<br/>
+        <a class="modal-email" href="mailto:lanstian@icloud.com">lanstian@icloud.com</a>
+      </div>
+      <button class="modal-close" onclick="closeModal()">开始使用</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════ */
+let SVC  = '0000ffe0-0000-1000-8000-00805f9b34fb';
+let CHAR = '0000ffe1-0000-1000-8000-00805f9b34fb';
+const MTU = 20;
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let ble = {device:null, char:null, conn:false};
+let rxBuf='', txB=0, rxB=0, logN=0;
+let arTimer=null, asTimer=null, loopTimer=null;
+let rightOpen=true, palOpen=false, settingsOpen=false;
+let dragId=null;
+let qCmds=[], qSeq=0, blocks=[], bSeq=0;
+
+const O = {
+  rxHex:true, txHex:true, autoScroll:true, showTs:false, wordWrap:false,
+  nl:true, hexSend:false, checksum:false,
+  autoSend:false, loopSend:false
+};
+let currentLang = 'zh';
+let userBgData = '';
+let userBgName = '';
+let uiState = { led:false, motor:'S', sensorUpdated:false };
+
+const I18N_ZH_EN = {
+  '显示选项':'Display',
+  '接收显示':'Receive',
+  '接收 HEX 显示':'RX HEX view',
+  '自动滚动':'Auto scroll',
+  '显示时间戳':'Show timestamps',
+  '自动换行':'Word wrap',
+  '发送选项':'Send',
+  '发送 HEX 显示':'TX HEX view',
+  '自动追加 \\n':'Append \\n',
+  '显示 CRC 校验':'Show CRC checksum',
+  '清空接收区':'Clear terminal',
+  '未连接':'Disconnected',
+  '指令面板':'Command Panel',
+  '蓝牙 BLE':'Bluetooth BLE',
+  '串口 UART':'Serial UART',
+  '连接':'Connect',
+  '高级配置':'Advanced',
+  '服务 UUID':'Service UUID',
+  '特征 UUID':'Characteristic UUID',
+  'HM-10 默认配置 · 按需修改':'HM-10 defaults · edit if needed',
+  '设备控制':'Device Control',
+  '指示灯':'LED',
+  '关':'Off',
+  '当前关闭':'Currently off',
+  '开启':'On',
+  '关闭':'Off',
+  'PWM 亮度':'PWM Brightness',
+  '松开后发送 PWM:xxx':'Send PWM:xxx on release',
+  '电机驱动':'Motor Drive',
+  '停止':'Stop',
+  '正转':'Forward',
+  '反转':'Reverse',
+  '传感器数据':'Sensor Data',
+  '待采集':'Waiting',
+  '温度':'Temp',
+  '湿度':'Humidity',
+  '距离':'Distance',
+  '请求一次':'Request once',
+  '自动刷新 2s':'Auto refresh 2s',
+  '串口配置':'Serial Config',
+  '波特率':'Baud',
+  '数据位':'Data bits',
+  '校验位':'Parity',
+  '停止位':'Stop bits',
+  '流控制':'Flow ctrl',
+  '选择串口设备':'Select serial device',
+  'Web Serial API 需 Chrome 89+':'Web Serial API requires Chrome 89+',
+  '仅 HTTPS / localhost 可用':'HTTPS / localhost only',
+  '连接设备后开始接收数据':'Receive starts after connection',
+  '自动 \\n':'Auto \\n',
+  'HEX 发送':'HEX send',
+  '自动发送':'Auto send',
+  '校验和':'Checksum',
+  '清空':'Clear',
+  '发送':'Send',
+  '快捷指令':'Quick Commands',
+  '循环间隔':'Loop every',
+  '积木编程':'Block Builder',
+  '发送选中':'Send Selected',
+  '循环发送':'Loop',
+  '启':'On',
+  '内容':'Content',
+  '延时':'Delay',
+  '操作':'Action',
+  '新建快捷指令':'New Quick Command',
+  '新建积木块':'New Block',
+  '电机':'Motor',
+  '传感器':'Sensor',
+  '自定义':'Custom',
+  '等待连接':'Waiting',
+  '就绪 · 点击「连接」配对 BLE 设备':'Ready · click “Connect” to pair BLE',
+  '日志':'Logs',
+  '设置':'Settings',
+  '当前主题':'Theme',
+  '白天模式':'Day mode',
+  '界面语言':'Language',
+  '自定义背景':'Custom Background',
+  '默认':'Default',
+  '上传图片':'Upload Image',
+  '恢复默认':'Reset Default',
+  '仅更换背景，不影响当前布局与毛玻璃风格':'Background only · layout and glass style stay unchanged',
+  'BLE 调试终端 · v2.0 · WebBluetooth API':'BLE Debug Terminal · v2.0 · WebBluetooth API',
+  '产品简介':'Overview',
+  'LanMonitor 是一款运行于 Chrome 浏览器的 BLE 串口调试工具，专为 STM32、ESP32 等嵌入式设备开发与调试而设计。基于 WebBluetooth API 实现，无需安装任何客户端软件，打开网页即可使用。':'LanMonitor is a BLE serial debugging panel that runs in Chrome and is designed for STM32, ESP32, and similar embedded devices. It is based on the Web Bluetooth API, so you can use it directly in the browser without installing any client software.',
+  '功能说明':'Features',
+  '蓝牙连接：':'Bluetooth:',
+  '支持 BLE 4.0 HM-10 模块，可自定义 Service UUID 与 Characteristic UUID，点击右上角「连接」即可配对':'Supports BLE 4.0 HM-10 modules, with custom Service UUID and Characteristic UUID. Click “Connect” in the top-right corner to pair.',
+  '实时终端：':'Live terminal:',
+  '完整接收/发送数据流，支持 ASCII 与 HEX 双模式，可开启时间戳与自动换行':'Full RX/TX stream display with ASCII and HEX modes, plus optional timestamps and word wrap.',
+  '快捷指令：':'Quick commands:',
+  '预置常用指令列表，支持单条发送、批量发送（发送选中）和按时间间隔循环发送':'Built-in common commands with single send, batch send, and loop send by interval.',
+  '积木编程：':'Block builder:',
+  '可视化拖拽式指令编排，每块支持独立延时、HEX 模式和注释，模拟 Scratch 积木拼图':'Visual drag-and-drop command sequencing. Each block supports its own delay, HEX mode, and note.',
+  '设备控制：':'Device control:',
+  '左侧面板提供 LED、PWM 亮度、电机驱动、传感器读取的直观快捷控制':'The left panel gives you quick control for LED, PWM brightness, motor drive, and sensor requests.',
+  '自动发送：':'Auto send:',
+  '发送区支持定时自动发送，积木面板支持循环执行选中的指令序列':'The send area supports interval auto-send, and the block panel can loop selected sequences.',
+  '显示选项：':'Display:',
+  '顶栏「显示选项」下拉菜单集中管理所有接收/发送的显示偏好设置':'The top display dropdown centralizes all RX/TX display preferences.',
+  '日志导出：':'Export:',
+  '点击顶栏导出按钮，将完整通信日志保存为 .txt 文件':'Click the export button in the top bar to save the full communication log as a .txt file.',
+  '外观切换：':'Appearance:',
+  '左下角设置面板支持白天模式、界面语言与自定义背景切换':'The bottom-left settings panel now supports day mode, interface language switching, and custom background images.',
+  '使用步骤':'Usage',
+  '确认已使用 Chrome / Chromium 浏览器（版本 56+），移动端使用 Chrome for Android':'Use Chrome / Chromium (version 56+) or Chrome for Android on mobile.',
+  '确认页面运行于 HTTPS 或 localhost 环境（WebBluetooth API 安全限制）':'Make sure the page runs under HTTPS or localhost due to Web Bluetooth security requirements.',
+  '点击右上角「连接」，在弹出的系统选择框中选择目标 BLE 设备':'Click “Connect” in the top-right and choose your BLE device in the system picker.',
+  '连接成功后，左侧控制区解锁，终端开始实时接收数据':'After connection succeeds, the left control panel unlocks and the terminal starts receiving data live.',
+  '在发送区输入指令，按 Enter 发送（Shift+Enter 换行）':'Type a command in the send area and press Enter to send. Use Shift+Enter for a new line.',
+  '右侧「快捷指令」添加常用指令；「积木编程」编排复杂指令序列':'Use “Quick Commands” on the right for common commands and “Block Builder” for more complex sequences.',
+  '默认指令协议':'Default Command Protocol',
+  '返回格式：TEMP:xx.x · HUM:xx.x · DIST:xxx · STATUS:OK':'Return format: TEMP:xx.x · HUM:xx.x · DIST:xxx · STATUS:OK',
+  '所有指令末尾自动追加换行符 \\n（可在显示选项中关闭）':'All commands append a trailing newline \\n by default, which can be disabled in Display.',
+  '如有问题或建议，欢迎联系：':'Questions or suggestions:',
+  '开始使用':'Enter',
+  '导出日志':'Export log',
+  '使用说明':'Manual',
+  '输入发送内容，Enter 发送，Shift+Enter 换行…':'Type message here. Enter to send, Shift+Enter for a new line…',
+  '打开 LED':'Turn LED on',
+  '关闭 LED':'Turn LED off',
+  '请求传感器数据':'Request sensor data',
+  '电机正转':'Motor forward',
+  '电机反转':'Motor reverse',
+  '亮度 75%':'Brightness 75%',
+  '亮度 50%':'Brightness 50%',
+  '请求数据':'Request data',
+  'HEX 数据':'HEX data',
+  '请使用 Chrome (WebBluetooth)':'Please use Chrome (Web Bluetooth)',
+  '扫描 BLE 设备…':'Scanning BLE devices…',
+  '未知':'Unknown',
+  '设备':'Device',
+  '未选择设备':'No device selected',
+  '连接已断开':'Connection closed',
+  '连接断开':'Disconnected',
+  '连接断开 · 点击「连接」重新配对':'Disconnected · click “Connect” to pair again',
+  '指令已执行':'Command executed',
+  '已更新':'Updated',
+  '请先连接设备':'Please connect a device first',
+  '当前开启':'Currently on',
+  '开':'On',
+  '正转中':'Forward running',
+  '反转中':'Reverse running',
+  '指令内容…':'Command…',
+  'HEX 格式':'HEX format',
+  '拖拽排序':'Drag to reorder',
+  '输入指令…':'Enter command…',
+  '注释（可选）…':'Note (optional)…',
+  'ms 延时':'ms delay',
+  '没有启用的指令':'No enabled commands',
+  '循环已停止':'Loop stopped',
+  '接收区已清空':'Terminal cleared',
+  '日志已导出':'Log exported',
+  '连接中…':'Connecting…',
+  '连接中':'Connecting',
+  '已连接':'Connected',
+  '断开连接':'Disconnect',
+  'LanMonitor 就绪 · 请点击「连接」配对 BLE 设备':'LanMonitor ready · click “Connect” to pair BLE',
+  '就绪 · 请连接 BLE 设备':'Ready · connect a BLE device',
+  '图片过大，请选择 4MB 以内文件':'Image too large. Please use a file under 4MB',
+  '背景已更新':'Background updated',
+  '背景保存失败，请换一张更小的图片':'Could not save background. Try a smaller image',
+  '已恢复默认背景':'Default background restored',
+  '已载入':'Loaded'
+};
+const I18N_EN_ZH = Object.fromEntries(Object.entries(I18N_ZH_EN).map(([zh,en])=>[en,zh]));
+
+function tr(str){
+  if(currentLang==='en') return I18N_ZH_EN[str] || str;
+  return I18N_EN_ZH[str] || str;
+}
+function trRaw(raw){
+  if(!raw || !raw.trim()) return raw;
+  const key = raw.trim();
+  const out = tr(key);
+  if(out===key) return raw;
+  const lead = raw.match(/^\s*/)?.[0] || '';
+  const tail = raw.match(/\s*$/)?.[0] || '';
+  return lead + out + tail;
+}
+function translateDom(root=document.body){
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      if(!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      const p = node.parentNode;
+      const tag = (p?.tagName || '').toLowerCase();
+      if(tag==='script' || tag==='style') return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let node;
+  while((node = walker.nextNode())) node.nodeValue = trRaw(node.nodeValue);
+
+  document.querySelectorAll('[title]').forEach(el=>{
+    const v = el.getAttribute('title');
+    if(v) el.setAttribute('title', tr(v));
+  });
+  document.querySelectorAll('[placeholder]').forEach(el=>{
+    const v = el.getAttribute('placeholder');
+    if(v) el.setAttribute('placeholder', tr(v));
+  });
+}
+function syncLangMeta(){
+  const sel = document.getElementById('lang-sel');
+  if(sel) sel.value = currentLang;
+  const themeName = document.getElementById('sp-theme-name');
+  if(themeName) themeName.textContent = '兰式古典';
+}
+function syncBgMeta(){
+  const state = document.getElementById('bg-state');
+  const clearBtn = document.getElementById('bg-clear-btn');
+  if(state) state.textContent = userBgData ? (userBgName || tr('已载入')) : tr('默认');
+  if(clearBtn) clearBtn.disabled = !userBgData;
+}
+function syncCommandLabels(){
+  document.querySelectorAll('.qrow').forEach(row=>{
+    const id = +row.dataset.id;
+    const item = qCmds.find(c=>c.id===id);
+    if(!item) return;
+    const qnote = row.querySelector('.qnote');
+    const qinp  = row.querySelector('.qinp');
+    const qsend = row.querySelector('.qsend-btn');
+    const hex   = row.querySelector('.hex-cbx');
+    if(qnote) qnote.textContent = item.note ? tr(item.note) : '';
+    if(qinp) qinp.setAttribute('placeholder', tr('指令内容…'));
+    if(qsend) qsend.textContent = tr('发送');
+    if(hex) hex.setAttribute('title', tr('HEX 格式'));
+  });
+  document.querySelectorAll('.qblk').forEach(row=>{
+    const id = +row.dataset.id;
+    const item = blocks.find(b=>b.id===id);
+    if(!item) return;
+    const grip = row.querySelector('.bgrip');
+    const binp = row.querySelector('.binp');
+    const bnote = row.querySelector('.bnote');
+    const bdunit = row.querySelector('.bdunit');
+    if(grip) grip.setAttribute('title', tr('拖拽排序'));
+    if(binp) binp.setAttribute('placeholder', tr('输入指令…'));
+    if(bnote){
+      bnote.setAttribute('placeholder', tr('注释（可选）…'));
+      if(I18N_ZH_EN[item.note] || I18N_EN_ZH[item.note]) bnote.value = tr(item.note || '');
+    }
+    if(bdunit) bdunit.textContent = tr('ms 延时');
+  });
+}
+function syncDeviceText(){
+  const ledOn = document.getElementById('led-pip')?.classList.contains('on');
+  uiState.led = !!ledOn;
+  const ledLbl = document.getElementById('led-lbl');
+  const ledBadge = document.getElementById('ab-led');
+  if(ledLbl) ledLbl.textContent = ledOn ? tr('当前开启') : tr('当前关闭');
+  if(ledBadge) ledBadge.textContent = ledOn ? tr('开') : tr('关');
+
+  const mic = document.getElementById('m-ic');
+  const motorLbl = document.getElementById('m-lbl');
+  const motorBadge = document.getElementById('ab-motor');
+  if(mic?.classList.contains('fwd')) uiState.motor = 'F';
+  else if(mic?.classList.contains('bwd')) uiState.motor = 'B';
+  else uiState.motor = 'S';
+  if(motorLbl && motorBadge){
+    if(uiState.motor==='F'){ motorLbl.textContent = tr('正转中'); motorBadge.textContent = tr('正转'); }
+    else if(uiState.motor==='B'){ motorLbl.textContent = tr('反转中'); motorBadge.textContent = tr('反转'); }
+    else { motorLbl.textContent = tr('停止'); motorBadge.textContent = tr('停止'); }
+  }
+
+  const sensorBadge = document.getElementById('ab-sensor');
+  if(sensorBadge){
+    uiState.sensorUpdated = sensorBadge.classList.contains('live');
+    sensorBadge.textContent = uiState.sensorUpdated ? tr('已更新') : tr('待采集');
+  }
+
+  const rp = document.getElementById('rp-lbl');
+  if(rp) rp.textContent = tr('指令面板');
+
+  const pip = document.getElementById('pip');
+  if(pip?.classList.contains('connecting')) setUI('connecting');
+  else if(ble.conn) setUI('connected', ble.device?.name);
+  else setUI('disc');
+}
+function applyLanguage(){
+  document.documentElement.lang = currentLang==='en' ? 'en' : 'zh-CN';
+  translateDom(document.body);
+  syncLangMeta();
+  syncBgMeta();
+  syncCommandLabels();
+  syncDeviceText();
+}
+function changeLang(lang){
+  currentLang = lang==='en' ? 'en' : 'zh';
+  localStorage.setItem('lanmonitor-lang', currentLang);
+  applyLanguage();
+}
+function applyBg(dataUrl='', name=''){
+  const layer = document.getElementById('bg-layer');
+  userBgData = dataUrl || '';
+  userBgName = name || '';
+  if(layer){
+    layer.style.backgroundImage = userBgData ? `url("${userBgData.replace(/"/g,'\\"')}")` : 'none';
+  }
+  document.body.classList.toggle('has-custom-bg', !!userBgData);
+  syncBgMeta();
+}
+function pickBg(evt){
+  evt?.stopPropagation?.();
+  document.getElementById('bg-file')?.click();
+}
+function onBgPicked(evt){
+  evt?.stopPropagation?.();
+  const file = evt.target.files?.[0];
+  if(!file) return;
+  if(file.size > 4 * 1024 * 1024){
+    toast(tr('图片过大，请选择 4MB 以内文件'),'warn');
+    evt.target.value='';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      localStorage.setItem('lanmonitor-user-bg', reader.result);
+      localStorage.setItem('lanmonitor-user-bg-name', file.name || '');
+      applyBg(reader.result, file.name || '');
+      toast(tr('背景已更新'),'ok');
+    }catch(err){
+      toast(tr('背景保存失败，请换一张更小的图片'),'err');
+    }
+    evt.target.value='';
+  };
+  reader.readAsDataURL(file);
+}
+function clearBg(evt){
+  evt?.stopPropagation?.();
+  localStorage.removeItem('lanmonitor-user-bg');
+  localStorage.removeItem('lanmonitor-user-bg-name');
+  applyBg('', '');
+  toast(tr('已恢复默认背景'),'ok');
+}
+function restorePrefs(){
+  const mode = localStorage.getItem('lanmonitor-theme-mode');
+  if(mode==='light') document.body.classList.add('light');
+  document.getElementById('light-cb').checked = document.body.classList.contains('light');
+
+  currentLang = localStorage.getItem('lanmonitor-lang') === 'en' ? 'en' : 'zh';
+  userBgData = localStorage.getItem('lanmonitor-user-bg') || '';
+  userBgName = localStorage.getItem('lanmonitor-user-bg-name') || '';
+  applyBg(userBgData, userBgName);
+  syncLangMeta();
+  applyLanguage();
+}
+
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+function showModal(){
+  const bg = document.getElementById('modal-bg');
+  bg.style.display='flex'; bg.classList.remove('closing');
+  bg.style.animation='modal-bg .4s ease';
+}
+function closeModal(){
+  const bg = document.getElementById('modal-bg');
+  bg.style.transition='opacity .32s ease';
+  bg.style.opacity='0';
+  setTimeout(()=>{ bg.style.display='none'; bg.style.opacity=''; bg.style.transition=''; }, 340);
+}
+
+/* ═══════════════════════════════════════════
+   DROPDOWN (with close animation)
+═══════════════════════════════════════════ */
+function openDD(btnId, panelId) {
+  const btn = document.getElementById(btnId);
+  const pan = document.getElementById(panelId);
+  btn.classList.add('open');
+  pan.classList.remove('closing');
+  pan.classList.add('open');
+  setTimeout(()=>{
+    document.addEventListener('click', function h(e){
+      if (!btn.closest('.dd-wrap').contains(e.target)){
+        closeDD(btnId, panelId);
+        document.removeEventListener('click',h);
+      }
+    });
+  },10);
+}
+function closeDD(btnId, panelId){
+  const btn = document.getElementById(btnId);
+  const pan = document.getElementById(panelId);
+  btn.classList.remove('open');
+  pan.classList.add('closing');
+  setTimeout(()=>{ pan.classList.remove('open','closing'); }, 210);
+}
+
+let ddMainOpen = false;
+function toggleDDMain(){
+  if (ddMainOpen){ closeDDMain(); } else {
+    ddMainOpen=true; openDD('dd-main-btn','dd-main-panel');
+  }
+}
+function closeDDMain(){ ddMainOpen=false; closeDD('dd-main-btn','dd-main-panel'); }
+
+/* ═══════════════════════════════════════════
+   SETTINGS PANEL
+═══════════════════════════════════════════ */
+function togSettings(){
+  const p = document.getElementById('settings-panel');
+  if (settingsOpen){
+    p.classList.add('closing');
+    settingsOpen=false;
+    setTimeout(()=>p.classList.remove('open','closing'),210);
+  } else {
+    p.classList.remove('closing');
+    p.classList.add('open');
+    settingsOpen=true;
+    setTimeout(()=>{
+      document.addEventListener('click',function h(e){
+        if (!document.getElementById('settings-btn').contains(e.target) && !p.contains(e.target)){
+          if(settingsOpen){
+            p.classList.add('closing'); settingsOpen=false;
+            setTimeout(()=>p.classList.remove('open','closing'),210);
+          }
+          document.removeEventListener('click',h);
+        }
+      });
+    },10);
+  }
+}
+
+function toggleLight(){
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('light-cb').checked = isLight;
+  localStorage.setItem('lanmonitor-theme-mode', isLight ? 'light' : 'dark');
+  syncBgMeta();
+}
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+function switchLTab(id, el){
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('tab-ble').classList.remove('active');
+  document.getElementById('tab-uart').classList.remove('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+function switchRTab(id, el){
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('rtab-qcmd-panel').classList.remove('active');
+  document.getElementById('rtab-blocks-panel').classList.remove('active');
+  document.getElementById('rtab-'+id+'-panel').classList.add('active');
+}
+
+/* ═══════════════════════════════════════════
+   ACCORDION — smooth both ways
+═══════════════════════════════════════════ */
+function toggleAcc(head){
+  const body = head.nextElementSibling;
+  const open = head.classList.toggle('open');
+  body.classList.toggle('open', open);
+}
+
+/* ═══════════════════════════════════════════
+   RIGHT PANEL SLIDE
+═══════════════════════════════════════════ */
+function toggleRight(){
+  const panel = document.getElementById('right');
+  const btn   = document.getElementById('btn-rp');
+  rightOpen = !rightOpen;
+  panel.classList.toggle('hidden', !rightOpen);
+  btn.classList.toggle('on', rightOpen);
+  document.getElementById('rp-lbl').textContent = tr('指令面板');
+}
+
+/* ═══════════════════════════════════════════
+   MODE
+═══════════════════════════════════════════ */
+function setMode(m,el){
+  document.querySelectorAll('.tb-tag').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+}
+function setWrap(v){ O.wordWrap=v; document.getElementById('term-out').style.whiteSpace=v?'pre-wrap':''; }
+function setCsum(v){ O.checksum=v; document.getElementById('csum-show').style.display=v?'inline':'none'; }
+
+/* ═══════════════════════════════════════════
+   BLE
+═══════════════════════════════════════════ */
+async function toggleConn(){ ble.conn ? disc() : conn(); }
+
+async function conn(){
+  SVC  = document.getElementById('svc-uuid').value.trim() || SVC;
+  CHAR = document.getElementById('char-uuid').value.trim() || CHAR;
+  if (!navigator.bluetooth){ toast(tr('请使用 Chrome (WebBluetooth)'),'err'); return; }
+  setUI('connecting'); addLog('sys',tr('扫描 BLE 设备…'));
+  try {
+    ble.device = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC]}] });
+    ble.device.addEventListener('gattserverdisconnected', onDisc);
+    addLog('sys',`${currentLang==='en'?'Found':'发现'}：${ble.device.name||tr('未知')}`);
+    const srv = await ble.device.gatt.connect();
+    const svc = await srv.getPrimaryService(SVC);
+    ble.char  = await svc.getCharacteristic(CHAR);
+    await ble.char.startNotifications();
+    ble.char.addEventListener('characteristicvaluechanged', onRx);
+    ble.conn=true;
+    setUI('connected', ble.device.name);
+    enableCtrls(true);
+    toast(`${currentLang==='en'?'Connected':'已连接'} · ${ble.device.name||tr('设备')}`,'ok');
+    addLog('sys',`${currentLang==='en'?'Connected':'连接成功'} · ${ble.device.name||tr('未知')}`);
+    setSbn(`${currentLang==='en'?'Connected':'已连接'} ${ble.device.name||tr('设备')}`);
+  } catch(e){
+    setUI('disc');
+    toast(e.name==='NotFoundError'?tr('未选择设备'):e.message,'warn');
+    addLog('sys',`${currentLang==='en'?'Failed':'失败'}：${e.message}`);
+  }
+}
+
+function disc(){
+  if (ble.device?.gatt?.connected) ble.device.gatt.disconnect();
+  onDisc();
+}
+function onDisc(){
+  ble.conn=false; ble.char=null; rxBuf='';
+  stopAR(); stopAS(); stopLoop();
+  setUI('disc'); enableCtrls(false);
+  toast(tr('连接已断开'),'warn'); addLog('sys',tr('连接断开'));
+  setSbn(tr('连接断开 · 点击「连接」重新配对'));
+}
+
+function onRx(e){
+  const raw=e.target.value; rxB+=raw.byteLength; updBytes();
+  rxBuf+=new TextDecoder().decode(raw);
+  const lines=rxBuf.split('\n'); rxBuf=lines.pop();
+  lines.forEach(l=>{
+    l=l.trim(); if(!l) return;
+    if(O.rxHex){
+      const h=Array.from(new TextEncoder().encode(l)).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+      addLog('rx',`${l}  [${h}]`,'hex');
+    } else addLog('rx',l);
+    parseResp(l);
+  });
+}
+
+function parseResp(l){
+  if(l.startsWith('TEMP:'))       flushSv('sv-temp',l.slice(5));
+  else if(l.startsWith('HUM:'))   flushSv('sv-hum', l.slice(4));
+  else if(l.startsWith('DIST:'))  flushSv('sv-dist',l.slice(5));
+  else if(l==='STATUS:OK')        toast(tr('指令已执行'),'ok');
+}
+function flushSv(id,v){
+  const el=document.getElementById(id); if(!el) return;
+  el.textContent=v; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  const b=document.getElementById('ab-sensor'); if(b){b.textContent=tr('已更新');b.classList.add('live'); uiState.sensorUpdated=true;}
+}
+
+/* ═══════════════════════════════════════════
+   SEND
+═══════════════════════════════════════════ */
+async function sendRaw(cmd,silent){
+  if(!ble.conn||!ble.char){ if(!silent) toast(tr('请先连接设备'),'warn'); return false; }
+  const full=O.nl?(cmd.endsWith('\n')?cmd:cmd+'\n'):cmd;
+  try {
+    let p;
+    if(O.hexSend){
+      const b=full.replace(/\s+/g,'').match(/.{1,2}/g)?.map(h=>parseInt(h,16))||[];
+      p=new Uint8Array(b);
+    } else p=new TextEncoder().encode(full);
+    for(let i=0;i<p.length;i+=MTU) await ble.char.writeValue(p.slice(i,i+MTU));
+    txB+=p.length; updBytes();
+    if(!silent){
+      const t=full.trim();
+      if(O.txHex){
+        const h=Array.from(p).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+        addLog('tx',`${t}  [${h}]`,'hex');
+      } else addLog('tx',t);
+    }
+    return true;
+  } catch(e){
+    toast(`${currentLang==='en'?'Send failed':'发送失败'}：${e.message}`,'err'); addLog('sys',`${currentLang==='en'?'Send failed':'发送失败'}：${e.message}`,'err');
+    return false;
+  }
+}
+
+function doSend(){ const v=document.getElementById('send-inp').value; if(!v.trim()) return; sendRaw(v); }
+function onSKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();} }
+function onSInput(){
+  if(!O.checksum) return;
+  const b=new TextEncoder().encode(document.getElementById('send-inp').value);
+  document.getElementById('csum-val').textContent=b.reduce((a,v)=>(a+v)&0xFF,0).toString(16).toUpperCase().padStart(2,'0');
+}
+function togSTag(el,k){ el.classList.toggle('on'); O[k]=el.classList.contains('on'); }
+
+function togAutoSend(){
+  O.autoSend=!O.autoSend;
+  document.getElementById('st-auto').classList.toggle('on-ok',O.autoSend);
+  O.autoSend ? startAS() : stopAS();
+}
+function startAS(){
+  stopAS();
+  const iv=parseInt(document.getElementById('send-iv').value)||1000;
+  asTimer=setInterval(()=>{const v=document.getElementById('send-inp').value;if(v.trim())sendRaw(v,true);},iv);
+}
+function stopAS(){ clearInterval(asTimer); asTimer=null; }
+
+/* ═══════════════════════════════════════════
+   DEVICE SHORTCUTS
+═══════════════════════════════════════════ */
+async function sendLED(on){
+  if(await sendRaw(on?'LED_ON':'LED_OFF')){
+    document.getElementById('led-pip').className='lpip'+(on?' on':'');
+    document.getElementById('led-lbl').textContent=on?tr('当前开启'):tr('当前关闭');
+    document.getElementById('ab-led').textContent=on?tr('开'):tr('关');
+    document.getElementById('btn-lon').className ='btn ctrl'+(on?' is-ok':'');
+    document.getElementById('btn-loff').className='btn ctrl'+(!on?' on':'');
+  }
+}
+function onPwmIn(sl){
+  const v=sl.value; sl.style.setProperty('--pct',v+'%');
+  document.getElementById('pwm-val').textContent=v;
+  document.getElementById('ab-pwm').textContent=v+'%';
+}
+async function sendPWM(){ await sendRaw(`PWM:${document.getElementById('pwm-sl').value}`); }
+async function sendMotor(d){
+  if(await sendRaw(`MOTOR:${d}`)){
+    const ic=document.getElementById('m-ic'),lbl=document.getElementById('m-lbl'),b=document.getElementById('ab-motor');
+    ic.className='mic';
+    if(d==='F'){ic.classList.add('fwd');lbl.textContent=tr('正转中');b.textContent=tr('正转'); uiState.motor='F';}
+    if(d==='B'){ic.classList.add('bwd');lbl.textContent=tr('反转中');b.textContent=tr('反转'); uiState.motor='B';}
+    if(d==='S'){lbl.textContent=tr('停止');b.textContent=tr('停止'); uiState.motor='S';}
+    ['btn-mf','btn-mb','btn-ms'].forEach(id=>document.getElementById(id).className='btn ctrl');
+    document.getElementById({F:'btn-mf',B:'btn-mb',S:'btn-ms'}[d]).className='btn ctrl'+(d==='F'?' is-ok':d==='B'?' is-er':'');
+  }
+}
+function toggleAR(){ document.getElementById('tog-auto').checked ? startAR() : stopAR(); }
+function startAR(){ if(arTimer)return; arTimer=setInterval(()=>ble.conn&&sendRaw('GET_DATA',true),2000); }
+function stopAR(){ clearInterval(arTimer); arTimer=null; const c=document.getElementById('tog-auto'); if(c)c.checked=false; }
+
+/* ═══════════════════════════════════════════
+   QUICK COMMANDS
+═══════════════════════════════════════════ */
+const DEFAULTS_Q = [
+  {cmd:'LED_ON',   note:'打开 LED',      hex:false, delay:0,    on:true },
+  {cmd:'LED_OFF',  note:'关闭 LED',      hex:false, delay:0,    on:true },
+  {cmd:'GET_DATA', note:'请求传感器数据', hex:false, delay:0,    on:true },
+  {cmd:'MOTOR:F',  note:'电机正转',      hex:false, delay:1000, on:false},
+  {cmd:'MOTOR:B',  note:'电机反转',      hex:false, delay:1000, on:false},
+  {cmd:'PWM:75',   note:'亮度 75%',      hex:false, delay:0,    on:false},
+];
+
+function addQCmd(d={}){
+  const id=++qSeq;
+  qCmds.push({id, cmd:d.cmd||'', note:d.note||'', hex:d.hex||false, delay:d.delay||0, on:d.on||false});
+  renderQ(qCmds[qCmds.length-1]);
+  document.getElementById('qcmd-list').scrollTop=99999;
+}
+
+function renderQ(item){
+  const list=document.getElementById('qcmd-list');
+  const el=document.createElement('div');
+  el.className='qrow'; el.dataset.id=item.id;
+  el.innerHTML=`
+    <input type="checkbox" class="qcbx" ${item.on?'checked':''} onchange="qSet(${item.id},'on',this.checked)"/>
+    <div class="qrow-main">
+      <input class="qinp" type="text" value="${esc(item.cmd)}" placeholder="${esc(tr('指令内容…'))}"
+             oninput="qSet(${item.id},'cmd',this.value)"/>
+      <div class="qnote">${item.note?esc(tr(item.note)):''}</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;">
+      <input type="checkbox" class="hex-cbx" ${item.hex?'checked':''} onchange="qSet(${item.id},'hex',this.checked)" title="${esc(tr('HEX 格式'))}"/>
+    </div>
+    <input class="delay-inp" type="number" min="0" max="99999" value="${item.delay}" oninput="qSet(${item.id},'delay',+this.value)"/>
+    <button class="qsend-btn ctrl" onclick="qSend(${item.id})">${tr('发送')}</button>
+    <button class="qdel-btn" onclick="qDel(${item.id})">✕</button>
+  `;
+  list.appendChild(el);
+}
+
+function qSet(id,k,v){ const i=qCmds.find(c=>c.id===id); if(i) i[k]=v; }
+async function qSend(id){
+  const item=qCmds.find(c=>c.id===id); if(!item) return;
+  const prev=O.hexSend; O.hexSend=item.hex;
+  if(item.delay>0) await new Promise(r=>setTimeout(r,item.delay));
+  await sendRaw(item.cmd);
+  O.hexSend=prev;
+}
+function qDel(id){
+  qCmds=qCmds.filter(c=>c.id!==id);
+  const el=document.querySelector(`.qrow[data-id="${id}"]`);
+  if(el){ el.style.opacity='0'; el.style.transform='translateX(10px)'; el.style.transition='all .2s'; setTimeout(()=>el.remove(),200); }
+}
+
+/* ═══════════════════════════════════════════
+   PUZZLE BLOCKS
+═══════════════════════════════════════════ */
+const TYPE_OF = cmd => {
+  const c=(cmd||'').toUpperCase().trim();
+  if(/^LED/.test(c)) return 'led';
+  if(/^MOTOR|^MTR/.test(c)) return 'motor';
+  if(/^PWM/.test(c)) return 'pwm';
+  if(/^GET|^TEMP|^HUM|^DIST/.test(c)) return 'sensor';
+  if(/^[0-9A-F]{2}\s/.test(c)) return 'hex';
+  return 'custom';
+};
+const TLABEL = {led:'LED',motor:'MTR',pwm:'PWM',sensor:'SNS',hex:'HEX',custom:'CMD'};
+
+function addBlock(type,cmd,tl,note,hex=false,delay=0,on=true){
+  const id=++bSeq;
+  const t=type||TYPE_OF(cmd);
+  blocks.push({id,type:t,cmd,note,hex,delay,on});
+  renderBlock(blocks[blocks.length-1]);
+  syncZ();
+  setTimeout(()=>{ const w=document.getElementById('blocks-wrap'); w.scrollTop=w.scrollHeight; },60);
+}
+
+function renderBlock(item){
+  const list=document.getElementById('block-list');
+  const el=document.createElement('div');
+  el.className='qblk'; el.dataset.id=item.id; el.dataset.t=item.type;
+  el.draggable=true;
+  const tl=TLABEL[item.type]||'CMD';
+  el.innerHTML=`
+    <div class="blk-hdr">
+      <div class="bgrip" title="${esc(tr('拖拽排序'))}">
+        <svg width="7" height="11" viewBox="0 0 8 14" fill="none">
+          <circle cx="2" cy="2.5" r="1.3" fill="currentColor" opacity=".6"/>
+          <circle cx="2" cy="7"   r="1.3" fill="currentColor" opacity=".6"/>
+          <circle cx="2" cy="11.5"r="1.3" fill="currentColor" opacity=".6"/>
+          <circle cx="6" cy="2.5" r="1.3" fill="currentColor" opacity=".6"/>
+          <circle cx="6" cy="7"   r="1.3" fill="currentColor" opacity=".6"/>
+          <circle cx="6" cy="11.5"r="1.3" fill="currentColor" opacity=".6"/>
+        </svg>
+      </div>
+      <input type="checkbox" class="bcbx" ${item.on?'checked':''} onchange="bSet(${item.id},'on',this.checked)"/>
+      <span class="btype">${tl}</span>
+      <span class="bcmd">${esc(item.cmd||'…')}</span>
+      <div class="bhacts">
+        <button class="bexp" onclick="togBlkBody(this,${item.id})">
+          <svg width="7" height="11" viewBox="0 0 6 10" fill="none"><path d="M1 1l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <button class="bsend ctrl-b" onclick="bSend(${item.id})">▶</button>
+        <button class="bdel" onclick="bDel(${item.id})">✕</button>
+      </div>
+    </div>
+    <div class="blk-body">
+      <input class="binp" type="text" value="${esc(item.cmd)}" placeholder="${esc(tr('输入指令…'))}"
+             oninput="bSet(${item.id},'cmd',this.value);bUpdHdr(${item.id},this.value)"/>
+      <input class="bnote" type="text" value="${esc(tr(item.note||''))}" placeholder="${esc(tr('注释（可选）…'))}"
+             oninput="bSet(${item.id},'note',this.value)"/>
+      <div class="bmeta">
+        <input class="bdelay" type="number" min="0" max="99999" value="${item.delay}" oninput="bSet(${item.id},'delay',+this.value||0)"/>
+        <span class="bdunit">${tr('ms 延时')}</span>
+        <label class="bhex">
+          <input type="checkbox" ${item.hex?'checked':''} onchange="bSet(${item.id},'hex',this.checked)"/> HEX
+        </label>
+      </div>
+    </div>
+  `;
+  // drag
+  el.addEventListener('dragstart',e=>{ dragId=item.id; e.dataTransfer.effectAllowed='move'; setTimeout(()=>el.classList.add('dragging'),0); });
+  el.addEventListener('dragend',()=>{ el.classList.remove('dragging'); document.querySelectorAll('.qblk').forEach(b=>b.classList.remove('drag-over')); });
+  el.addEventListener('dragover',e=>{ e.preventDefault(); document.querySelectorAll('.qblk').forEach(b=>b.classList.remove('drag-over')); if(item.id!==dragId) el.classList.add('drag-over'); });
+  el.addEventListener('drop',e=>{ e.preventDefault(); el.classList.remove('drag-over'); if(dragId&&dragId!==item.id) reorderBlk(dragId,item.id); });
+  list.appendChild(el);
+}
+
+function togBlkBody(btn,id){
+  btn.classList.toggle('open');
+  const el=document.querySelector(`.qblk[data-id="${id}"]`); if(!el) return;
+  el.querySelector('.blk-body').classList.toggle('open');
+}
+function bUpdHdr(id,cmd){
+  const el=document.querySelector(`.qblk[data-id="${id}"]`); if(!el) return;
+  const sc=el.querySelector('.bcmd'); if(sc) sc.textContent=cmd||'…';
+  const t=TYPE_OF(cmd); el.dataset.t=t; bSet(id,'type',t);
+  const tl=el.querySelector('.btype'); if(tl) tl.textContent=TLABEL[t]||'CMD';
+}
+function bSet(id,k,v){ const i=blocks.find(b=>b.id===id); if(i) i[k]=v; }
+async function bSend(id){
+  const item=blocks.find(b=>b.id===id); if(!item) return;
+  const prev=O.hexSend; O.hexSend=item.hex;
+  if(item.delay>0) await new Promise(r=>setTimeout(r,item.delay));
+  await sendRaw(item.cmd); O.hexSend=prev;
+}
+function bDel(id){
+  blocks=blocks.filter(b=>b.id!==id);
+  const el=document.querySelector(`.qblk[data-id="${id}"]`);
+  if(el){ el.style.opacity='0'; el.style.transform='translateX(12px)'; el.style.transition='all .2s'; setTimeout(()=>{ el.remove(); syncZ(); },210); }
+}
+function reorderBlk(sId,dId){
+  const si=blocks.findIndex(b=>b.id===sId), di=blocks.findIndex(b=>b.id===dId);
+  if(si===-1||di===-1) return;
+  const [item]=blocks.splice(si,1); blocks.splice(di,0,item);
+  const list=document.getElementById('block-list');
+  const se=document.querySelector(`.qblk[data-id="${sId}"]`), de=document.querySelector(`.qblk[data-id="${dId}"]`);
+  if(se&&de){ if(si<di) list.insertBefore(se,de.nextSibling); else list.insertBefore(se,de); }
+  syncZ();
+}
+function syncZ(){ const bl=document.querySelectorAll('#block-list .qblk'); bl.forEach((b,i)=>b.style.zIndex=bl.length-i+1); }
+
+function togPalette(){
+  palOpen=!palOpen;
+  document.getElementById('palette').classList.toggle('open',palOpen);
+  document.getElementById('btn-palette').classList.toggle('on',palOpen);
+}
+
+/* Send selected / loop — works for both tabs */
+async function sendSelected(){
+  const enQ=qCmds.filter(c=>c.on); const enB=blocks.filter(b=>b.on);
+  const tab=document.getElementById('rtab-qcmd-panel').classList.contains('active');
+  const items=tab ? enQ : enB;
+  if(!items.length){ toast(tr('没有启用的指令'),'warn'); return; }
+  for(const item of items){
+    if(tab) await qSend(item.id); else await bSend(item.id);
+    if(item.delay>0) await new Promise(r=>setTimeout(r,item.delay));
+  }
+  toast(`${currentLang==='en'?'Sent':'已发送'} ${items.length} ${currentLang==='en'?'item(s)':'条'}`,'ok');
+}
+
+function togLoop(){
+  O.loopSend=!O.loopSend;
+  document.getElementById('ra-loop').classList.toggle('on',O.loopSend);
+  O.loopSend ? startLoop() : (stopLoop(),toast(tr('循环已停止'),''));
+}
+async function startLoop(){
+  stopLoop();
+  const iv=parseInt(document.getElementById('loop-iv').value)||5000;
+  const tab=document.getElementById('rtab-qcmd-panel').classList.contains('active');
+  const run=async()=>{
+    if(!O.loopSend) return;
+    const items=(tab?qCmds:blocks).filter(i=>i.on);
+    for(const item of items){
+      if(!O.loopSend) break;
+      if(tab) await qSend(item.id); else await bSend(item.id);
+      if(item.delay>0) await new Promise(r=>setTimeout(r,item.delay));
+    }
+    loopTimer=setTimeout(run,iv);
+  };
+  run(); addLog('sys',`${currentLang==='en'?'Loop ON':'循环发送 ON'} · ${iv}ms`); toast(`${currentLang==='en'?'Looping':'循环发送中'} · ${iv}ms`,'ok');
+}
+function stopLoop(){ clearTimeout(loopTimer); loopTimer=null; }
+
+/* ═══════════════════════════════════════════
+   LOG
+═══════════════════════════════════════════ */
+const MAX_LOG=200;
+function addLog(dir,msg,style){
+  const out=document.getElementById('term-out');
+  const emp=document.getElementById('term-empty');
+  if(emp&&emp.style.display!=='none') emp.style.display='none';
+  while(out.children.length>=MAX_LOG) out.removeChild(out.firstChild);
+  const t=new Date();
+  const ts=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':')
+           +'.'+String(t.getMilliseconds()).padStart(3,'0');
+  const row=document.createElement('div'); row.className='t-row';
+  const dl={tx:'TX',rx:'RX',sys:'SYS'}[dir]||'SYS';
+  let mc=dir; if(style==='hex') mc+=' hex'; if(style==='err') mc='err';
+  const tsH=O.showTs?`<span class="t-ts">${ts}</span>`:`<span class="t-ts">${ts.slice(0,8)}</span>`;
+  row.innerHTML=`${tsH}<span class="t-dir ${dir}">${dl}</span><span class="t-msg ${mc}">${esc(msg)}</span>`;
+  out.appendChild(row);
+  if(O.autoScroll) out.scrollTop=out.scrollHeight;
+  logN++; document.getElementById('sb-logn').textContent=logN;
+}
+
+function clearTerm(){
+  document.getElementById('term-out').innerHTML='';
+  document.getElementById('term-empty').style.display='';
+  logN=0; document.getElementById('sb-logn').textContent='0';
+  addLog('sys',tr('接收区已清空'));
+}
+
+function exportLog(){
+  const rows=document.querySelectorAll('.t-row');
+  const lines=[];
+  rows.forEach(r=>{
+    const ts=r.querySelector('.t-ts')?.textContent||'';
+    const d=r.querySelector('.t-dir')?.textContent||'';
+    const m=r.querySelector('.t-msg')?.textContent||'';
+    lines.push(`${ts}  ${d}  ${m}`);
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`lanmonitor_${Date.now()}.txt`; a.click();
+  URL.revokeObjectURL(url); toast(tr('日志已导出'),'ok');
+}
+
+/* ═══════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════ */
+function setUI(state,name){
+  const p=document.getElementById('pip'), lp=document.getElementById('left-pip');
+  const cl=document.getElementById('conn-lbl'), ll=document.getElementById('left-lbl');
+  const ch=document.getElementById('conn-chip'), sp=document.getElementById('sb-pip');
+  const ss=document.getElementById('sb-status'), bc=document.getElementById('btn-conn');
+
+  p.className=''; lp.className='spip'; sp.className='spip';
+
+  if(state==='connecting'){
+    p.classList.add('connecting'); lp.classList.add('connecting'); sp.classList.add('connecting');
+    cl.textContent=tr('连接中…'); ll.textContent=tr('连接中…'); ss.textContent=tr('连接中');
+    ch.classList.remove('live'); bc.textContent=tr('连接中…');
+  } else if(state==='connected'){
+    p.classList.add('connected'); lp.classList.add('connected'); sp.classList.add('connected');
+    cl.textContent=name||tr('已连接'); ll.textContent=name||tr('已连接'); ss.textContent=name||tr('已连接');
+    ch.classList.add('live'); bc.textContent=tr('断开连接'); bc.className='btn is-er';
+  } else {
+    cl.textContent=tr('未连接'); ll.textContent=tr('未连接'); ss.textContent=tr('等待连接');
+    ch.classList.remove('live'); bc.textContent=tr('连接'); bc.className='btn';
+  }
+}
+
+function enableCtrls(on){
+  document.querySelectorAll('.ctrl').forEach(el=>el.disabled=!on);
+  document.querySelectorAll('.ctrl-b').forEach(el=>el.disabled=!on);
+  document.querySelectorAll('.ctrl-q').forEach(el=>el.disabled=!on);
+  document.getElementById('pwm-sl').disabled=!on;
+  document.getElementById('tog-auto').disabled=!on;
+  document.getElementById('send-inp').disabled=!on;
+  document.getElementById('btn-send').disabled=!on;
+  if(!on){ stopAR(); stopAS(); stopLoop(); }
+}
+
+function updBytes(){
+  const f=b=>b<1024?`${b} B`:`${(b/1024).toFixed(1)} KB`;
+  document.getElementById('sb-tx').textContent=f(txB);
+  document.getElementById('sb-rx').textContent=f(rxB);
+}
+function setSbn(t){ document.getElementById('sb-notice').textContent=t; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toast(msg,type){
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div'); el.className=`toast ${type||''}`; el.textContent=msg;
+  c.appendChild(el); setTimeout(()=>el.remove(),3800);
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+(function init(){
+  enableCtrls(false);
+
+  // Default quick commands
+  DEFAULTS_Q.forEach(d=>addQCmd(d));
+
+  // Default blocks (in blocks tab)
+  const DB = [
+    {type:'led',   cmd:'LED_ON',   note:'打开 LED',    hex:false,delay:0,    on:true },
+    {type:'led',   cmd:'LED_OFF',  note:'关闭 LED',    hex:false,delay:0,    on:true },
+    {type:'sensor',cmd:'GET_DATA', note:'请求传感器数据',hex:false,delay:0,  on:false},
+    {type:'motor', cmd:'MOTOR:F',  note:'电机正转',    hex:false,delay:1000, on:false},
+    {type:'pwm',   cmd:'PWM:75',   note:'亮度 75%',    hex:false,delay:0,    on:false},
+  ];
+  DB.forEach(d=>addBlock(d.type,d.cmd,TLABEL[d.type],d.note,d.hex,d.delay,d.on));
+
+  addLog('sys',tr('LanMonitor 就绪 · 请点击「连接」配对 BLE 设备'));
+  setSbn(tr('就绪 · 请连接 BLE 设备'));
+  restorePrefs();
+})();
+</script>
+</body>
+</html>
