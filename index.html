@@ -1198,6 +1198,17 @@ body.light .toast{background:rgba(248,245,240,.97);}
 .toast.ok::before  {background:var(--ok);}
 .toast.warn::before{background:var(--warn);}
 .toast.err::before {background:var(--err);}
+
+/* ═══════ v3 additions ═══════ */
+.tb-tag.paused{color:var(--warn);border-color:rgba(158,143,90,.4);background:rgba(158,143,90,.10);}
+.tb-tag.paused::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn);margin-right:5px;display:inline-block;animation:pip-blink .85s infinite;}
+.t-row.frame-ok .t-msg{color:#6ec48a;}
+.t-row.frame-err .t-msg{color:var(--err);}
+.t-frame-icon{display:inline-block;margin-right:6px;}
+#sb-fps{color:var(--rx);font-variant-numeric:tabular-nums;}
+.kbd-hint{font-family:var(--mono);font-size:10px;color:var(--t3);padding:1px 5px;border:1px solid var(--bd);border-radius:3px;background:rgba(0,0,0,.18);margin-left:6px;}
+body.light .kbd-hint{background:rgba(0,0,0,.04);}
+#term-out.paused{filter:saturate(.4) brightness(.85);}
 </style>
 </head>
 <body>
@@ -1235,10 +1246,24 @@ body.light .toast{background:rgba(248,245,240,.97);}
       <label class="dd-item"><input type="checkbox" id="o-txhex" checked onchange="O.txHex=this.checked"/> 发送 HEX 显示</label>
       <label class="dd-item"><input type="checkbox" id="o-nl" checked onchange="O.nl=this.checked"/> 自动追加 \n</label>
       <label class="dd-item"><input type="checkbox" id="o-csum" onchange="setCsum(this.checked)"/> 显示 CRC 校验</label>
+      <div class="dd-section">协议解析</div>
+      <label class="dd-item"><input type="checkbox" id="o-frame" checked onchange="O.frameParser=this.checked"/> 二进制帧解析</label>
+      <label class="dd-item"><input type="checkbox" id="o-stats" checked onchange="O.showFps=this.checked;updFpsVis()"/> 显示帧速率</label>
       <div class="dd-sep"></div>
       <button class="dd-action" onclick="clearTerm();closeDDMain()">清空接收区</button>
     </div>
   </div>
+
+  <div class="tb-sep"></div>
+
+  <!-- Pause/Resume RX -->
+  <button class="tb-tag" id="tag-pause" onclick="togglePause()" title="暂停接收 (Ctrl+P)">
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="margin-right:4px;">
+      <rect x="2" y="1.5" width="2" height="7" fill="currentColor"/>
+      <rect x="6" y="1.5" width="2" height="7" fill="currentColor"/>
+    </svg>
+    <span id="pause-lbl">暂停接收</span>
+  </button>
 
   <div class="tb-sep"></div>
 
@@ -1414,7 +1439,7 @@ body.light .toast{background:rgba(248,245,240,.97);}
         <div class="sr"><span class="sl">流控制</span>
           <select class="sel"><option selected>None</option><option>RTS/CTS</option><option>XON/XOFF</option></select>
         </div>
-        <button class="btn btn-f" style="margin-top:14px;" disabled>选择串口设备</button>
+        <button class="btn btn-f" style="margin-top:14px;" onclick="toggleConn()">选择串口设备</button>
         <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-top:9px;line-height:1.8;">
           Web Serial API 需 Chrome 89+<br/>仅 HTTPS / localhost 可用
         </div>
@@ -1537,6 +1562,10 @@ body.light .toast{background:rgba(248,245,240,.97);}
     <span style="color:var(--rx);font-family:var(--kai);">Rx</span>
     <span class="sbval" id="sb-rx">0 B</span>
   </div>
+  <div class="sbit" id="sb-fps-item">
+    <span style="color:var(--rx);font-family:var(--kai);">帧</span>
+    <span class="sbval" id="sb-fps">0/s</span>
+  </div>
   <div class="sbit" style="border-right:none;">
     <span style="font-family:var(--kai);color:var(--t2);">日志</span>
     <span class="sbval" id="sb-logn">0</span>
@@ -1646,7 +1675,7 @@ body.light .toast{background:rgba(248,245,240,.97);}
     <div class="modal-footer">
       <div class="modal-contact">
         如有问题或建议，欢迎联系：<br/>
-        <a class="modal-email" href="mailto:lanstian@icloud.com">lanstian@icloud.com</a>
+        <a class="modal-email" href="/cdn-cgi/l/email-protection#593538372a2d30383719303a35362c3d773a3634"><span class="__cf_email__" data-cfemail="5a363b34292e333b341a333936352f3e74393537">[email&#160;protected]</span></a>
       </div>
       <button class="modal-close" onclick="closeModal()">开始使用</button>
     </div>
@@ -1655,7 +1684,7 @@ body.light .toast{background:rgba(248,245,240,.97);}
 
 <div id="toasts"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 /* ═══════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════ */
@@ -1666,7 +1695,12 @@ const MTU = 20;
 /* ═══════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════ */
-let ble = {device:null, char:null, conn:false};
+let activeTransport = 'ble';   // 'ble' | 'uart' — 当前生效的传输方式
+let ble  = {device:null, char:null, conn:false};
+let uart = {port:null, reader:null, writer:null, conn:false, readLoopRunning:false};
+
+function isConn(){ return activeTransport==='ble' ? ble.conn : uart.conn; }
+
 let rxBuf='', txB=0, rxB=0, logN=0;
 let arTimer=null, asTimer=null, loopTimer=null;
 let rightOpen=true, palOpen=false, settingsOpen=false;
@@ -1676,8 +1710,21 @@ let qCmds=[], qSeq=0, blocks=[], bSeq=0;
 const O = {
   rxHex:true, txHex:true, autoScroll:true, showTs:false, wordWrap:false,
   nl:true, hexSend:false, checksum:false,
-  autoSend:false, loopSend:false
+  autoSend:false, loopSend:false,
+  /* v3 new options */
+  paused:false, frameParser:true, showFps:true
 };
+
+/* v3: send history + frame stats */
+let sendHistory = [];
+let histIdx = -1;        // -1 means user is typing fresh, not navigating history
+const MAX_HISTORY = 50;
+let frameCount = 0;
+let frameTimestamps = [];   // ring of timestamps for FPS calc
+const FRAME_WINDOW_MS = 1000;
+let lastFpsUpdate = 0;
+let pauseBuffer = [];       // {dir, msg, style, ts} entries received while paused
+const MAX_PAUSE_BUFFER = 500;
 let currentLang = 'zh';
 let userBgData = '';
 let userBgName = '';
@@ -1959,7 +2006,7 @@ function syncDeviceText(){
 
   const pip = document.getElementById('pip');
   if(pip?.classList.contains('connecting')) setUI('connecting');
-  else if(ble.conn) setUI('connected', ble.device?.name);
+  else if(isConn()) syncConnectButton();
   else setUI('disc');
 }
 function applyLanguage(){
@@ -2125,6 +2172,23 @@ function switchLTab(id, el){
   document.getElementById('tab-ble').classList.remove('active');
   document.getElementById('tab-uart').classList.remove('active');
   document.getElementById('tab-'+id).classList.add('active');
+
+  // 切换当前生效的传输方式，并同步顶部连接按钮/控制区状态
+  activeTransport = id;
+  syncConnectButton();
+}
+
+function syncConnectButton(){
+  if(isConn()){
+    const name = activeTransport==='ble'
+      ? (ble.device?.name || tr('已连接'))
+      : `UART ${currentUartBaud()}`;
+    setUI('connected', name);
+    enableCtrls(true);
+  } else {
+    setUI('disc');
+    enableCtrls(false);
+  }
 }
 
 function switchRTab(id, el){
@@ -2167,24 +2231,31 @@ function setWrap(v){ O.wordWrap=v; document.getElementById('term-out').style.whi
 function setCsum(v){ O.checksum=v; document.getElementById('csum-show').style.display=v?'inline':'none'; }
 
 /* ═══════════════════════════════════════════
-   BLE
+   CONNECTIONS: BLE / UART
 ═══════════════════════════════════════════ */
-async function toggleConn(){ ble.conn ? disc() : conn(); }
+async function toggleConn(){
+  if(activeTransport === 'uart'){
+    uart.conn ? uartDisc() : uartConn();
+  } else {
+    ble.conn  ? bleDisc()  : bleConn();
+  }
+}
 
-async function conn(){
+/* ── BLE ───────────────────────────────── */
+async function bleConn(){
   SVC  = document.getElementById('svc-uuid').value.trim() || SVC;
   CHAR = document.getElementById('char-uuid').value.trim() || CHAR;
   if (!navigator.bluetooth){ toast(tr('请使用 Chrome (WebBluetooth)'),'err'); return; }
   setUI('connecting'); addLog('sys',tr('扫描 BLE 设备…'));
   try {
     ble.device = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC]}] });
-    ble.device.addEventListener('gattserverdisconnected', onDisc);
-    addLog('sys',`${currentLang==='en'?'Found':'发现'}：${ble.device.name||tr('未知')}`);
+    ble.device.addEventListener('gattserverdisconnected', onBleDisc);
+    addLog('sys',`${currentLang==='en'?'Found':'发现'}:${ble.device.name||tr('未知')}`);
     const srv = await ble.device.gatt.connect();
     const svc = await srv.getPrimaryService(SVC);
     ble.char  = await svc.getCharacteristic(CHAR);
     await ble.char.startNotifications();
-    ble.char.addEventListener('characteristicvaluechanged', onRx);
+    ble.char.addEventListener('characteristicvaluechanged', onBleRx);
     ble.conn=true;
     setUI('connected', ble.device.name);
     enableCtrls(true);
@@ -2194,34 +2265,202 @@ async function conn(){
   } catch(e){
     setUI('disc');
     toast(e.name==='NotFoundError'?tr('未选择设备'):e.message,'warn');
-    addLog('sys',`${currentLang==='en'?'Failed':'失败'}：${e.message}`);
+    addLog('sys',`${currentLang==='en'?'Failed':'失败'}:${e.message}`);
   }
 }
 
-function disc(){
+function bleDisc(){
   if (ble.device?.gatt?.connected) ble.device.gatt.disconnect();
-  onDisc();
-}
-function onDisc(){
-  ble.conn=false; ble.char=null; rxBuf='';
-  stopAR(); stopAS(); stopLoop();
-  setUI('disc'); enableCtrls(false);
-  toast(tr('连接已断开'),'warn'); addLog('sys',tr('连接断开'));
-  setSbn(tr('连接断开 · 点击「连接」重新配对'));
+  onBleDisc();
 }
 
-function onRx(e){
+function onBleDisc(){
+  ble.conn=false; ble.char=null;
+  if(activeTransport==='ble') rxBuf='';
+  stopAR(); stopAS(); stopLoop();
+  if(activeTransport==='ble'){
+    setUI('disc'); enableCtrls(false);
+    toast(tr('连接已断开'),'warn'); addLog('sys',tr('连接断开'));
+    setSbn(tr('连接断开 · 点击「连接」重新配对'));
+  }
+}
+
+function onBleRx(e){
   const raw=e.target.value; rxB+=raw.byteLength; updBytes();
-  rxBuf+=new TextDecoder().decode(raw);
-  const lines=rxBuf.split('\n'); rxBuf=lines.pop();
-  lines.forEach(l=>{
-    l=l.trim(); if(!l) return;
+  processIncoming(new Uint8Array(raw.buffer));
+}
+
+/* ── UART / Web Serial ─────────────────── */
+function currentUartBaud(){
+  const sel = document.querySelector('#tab-uart .sel');
+  return parseInt(sel?.value || '115200');
+}
+
+function readUartConfig(){
+  const sels = document.querySelectorAll('#tab-uart .sel');
+  // sels 顺序: 波特率, 数据位, 校验位, 停止位, 流控
+  const parityRaw = sels[2]?.value || 'None';
+  const flowRaw   = sels[4]?.value || 'None';
+  return {
+    baudRate: parseInt(sels[0]?.value || '115200'),
+    dataBits: parseInt(sels[1]?.value || '8'),
+    parity:   parityRaw.toLowerCase(),                  // 'none' | 'odd' | 'even'
+    stopBits: parseFloat(sels[3]?.value || '1'),
+    flowControl: flowRaw === 'RTS/CTS' ? 'hardware' : 'none'
+  };
+}
+
+async function uartConn(){
+  if (!('serial' in navigator)){
+    toast(currentLang==='en'
+      ? 'Web Serial requires Chrome 89+ on HTTPS/localhost'
+      : '需 Chrome 89+ (HTTPS/localhost) 才能用 Web Serial', 'err');
+    return;
+  }
+  setUI('connecting');
+  addLog('sys', currentLang==='en' ? 'Requesting serial port…' : '请求串口设备…');
+
+  try {
+    uart.port = await navigator.serial.requestPort();
+    const cfg = readUartConfig();
+    await uart.port.open(cfg);
+
+    uart.writer = uart.port.writable.getWriter();
+    uart.conn = true;
+
+    const cfgLabel = `${cfg.baudRate} ${cfg.dataBits}${cfg.parity[0].toUpperCase()}${cfg.stopBits}`;
+    setUI('connected', `UART ${cfg.baudRate}`);
+    enableCtrls(true);
+    toast(currentLang==='en' ? `UART connected · ${cfgLabel}` : `UART 已连接 · ${cfgLabel}`, 'ok');
+    addLog('sys', currentLang==='en' ? `UART connected · ${cfgLabel}` : `UART 连接成功 · ${cfgLabel}`);
+    setSbn(currentLang==='en' ? `UART · ${cfgLabel}` : `已连接 UART · ${cfgLabel}`);
+
+    navigator.serial.addEventListener('disconnect', onSerialDisconnectEvent);
+    uartReadLoop();
+  } catch(e){
+    setUI('disc');
+    if(e.name === 'NotFoundError'){
+      toast(tr('未选择设备'), 'warn');
+    } else {
+      toast(e.message, 'err');
+      addLog('sys', `UART ${currentLang==='en'?'failed':'失败'}:${e.message}`, 'err');
+    }
+  }
+}
+
+async function uartReadLoop(){
+  if(uart.readLoopRunning) return;
+  uart.readLoopRunning = true;
+  while(uart.conn && uart.port?.readable){
+    uart.reader = uart.port.readable.getReader();
+    try {
+      while(true){
+        const {value, done} = await uart.reader.read();
+        if(done) break;
+        if(value){
+          rxB += value.byteLength;
+          updBytes();
+          processIncoming(value);
+        }
+      }
+    } catch(e){
+      if(uart.conn) addLog('sys', `RX:${e.message}`, 'err');
+    } finally {
+      try { uart.reader.releaseLock(); } catch{}
+      uart.reader = null;
+    }
+  }
+  uart.readLoopRunning = false;
+}
+
+async function uartDisc(){
+  uart.conn = false;
+  try { await uart.reader?.cancel(); } catch{}
+  try { uart.writer?.releaseLock(); } catch{}
+  uart.writer = null;
+  try { await uart.port?.close(); } catch{}
+  uart.port = null;
+
+  if(activeTransport==='uart') rxBuf='';
+  stopAR(); stopAS(); stopLoop();
+
+  if(activeTransport==='uart'){
+    setUI('disc'); enableCtrls(false);
+    toast(currentLang==='en'?'UART disconnected':'UART 已断开','warn');
+    addLog('sys', currentLang==='en'?'UART disconnected':'UART 连接断开');
+    setSbn(tr('连接断开 · 点击「连接」重新配对'));
+  }
+}
+
+function onSerialDisconnectEvent(e){
+  if(uart.port && e.target === uart.port){
+    uartDisc();
+  }
+}
+
+/* ── Unified RX ────────────────────────── */
+function processIncoming(bytes){
+  // v3: frame counter / fps calc
+  frameTimestamps.push(performance.now());
+  const cutoff = performance.now() - FRAME_WINDOW_MS;
+  while(frameTimestamps.length && frameTimestamps[0] < cutoff) frameTimestamps.shift();
+  frameCount++;
+  if(performance.now() - lastFpsUpdate > 250){
+    document.getElementById('sb-fps').textContent = `${frameTimestamps.length}/s`;
+    lastFpsUpdate = performance.now();
+  }
+
+  // v3: optional binary frame parser (AA 55 [TYPE] [XOR] 0D 0A)
+  if(O.frameParser){
+    parseBinaryFrames(bytes);
+  }
+
+  // Existing ASCII line parsing (line-based)
+  rxBuf += new TextDecoder().decode(bytes);
+  const lines = rxBuf.split('\n');
+  rxBuf = lines.pop();
+  for(let line of lines){
+    line = line.trim();
+    if(!line) continue;
+    // If frame parser handled this line (it begins with AA 55), don't double-log raw
+    const isBinaryFrame = O.frameParser && line.length >= 4 && line.charCodeAt(0)===0xAA && line.charCodeAt(1)===0x55;
+    if(isBinaryFrame) continue;
     if(O.rxHex){
-      const h=Array.from(new TextEncoder().encode(l)).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
-      addLog('rx',`${l}  [${h}]`,'hex');
-    } else addLog('rx',l);
-    parseResp(l);
-  });
+      const h = Array.from(new TextEncoder().encode(line))
+                  .map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+      addLog('rx', `${line}  [${h}]`, 'hex');
+    } else {
+      addLog('rx', line);
+    }
+    parseResp(line);
+  }
+}
+
+/* v3: parse OpenMV-style frames AA 55 [TYPE] [XOR] 0D 0A */
+const FRAME_HEAD1=0xAA, FRAME_HEAD2=0x55, FRAME_TAIL1=0x0D, FRAME_TAIL2=0x0A, XOR_KEY=0x5A;
+const FRAME_TYPES = {0x00:{label:'NONE',  icon:'⚪'},
+                     0x01:{label:'RED',   icon:'🔴'},
+                     0x02:{label:'GREEN', icon:'🟢'}};
+let frameAcc = [];
+function parseBinaryFrames(bytes){
+  for(const b of bytes){
+    frameAcc.push(b);
+    if(frameAcc.length > 6) frameAcc.shift();
+    if(frameAcc.length === 6 &&
+       frameAcc[0] === FRAME_HEAD1 && frameAcc[1] === FRAME_HEAD2 &&
+       frameAcc[4] === FRAME_TAIL1 && frameAcc[5] === FRAME_TAIL2){
+      const type = frameAcc[2];
+      const csum = frameAcc[3];
+      const hex = frameAcc.map(x=>x.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+      if((type ^ XOR_KEY) === csum){
+        const meta = FRAME_TYPES[type] || {label:`?${type.toString(16)}`, icon:'❓'};
+        addLog('rx', `${meta.icon} ${meta.label}  [${hex}]`, 'frame-ok');
+      } else {
+        addLog('rx', `校验错误 [${hex}]`, 'frame-err');
+      }
+      frameAcc = [];
+    }
+  }
 }
 
 function parseResp(l){
@@ -2239,33 +2478,86 @@ function flushSv(id,v){
 /* ═══════════════════════════════════════════
    SEND
 ═══════════════════════════════════════════ */
-async function sendRaw(cmd,silent){
-  if(!ble.conn||!ble.char){ if(!silent) toast(tr('请先连接设备'),'warn'); return false; }
-  const full=O.nl?(cmd.endsWith('\n')?cmd:cmd+'\n'):cmd;
+async function sendRaw(cmd, silent){
+  if(!isConn()){
+    if(!silent) toast(tr('请先连接设备'),'warn');
+    return false;
+  }
+
+  const full = O.nl ? (cmd.endsWith('\n') ? cmd : cmd + '\n') : cmd;
+  let payload;
+  if(O.hexSend){
+    const b = full.replace(/\s+/g,'').match(/.{1,2}/g)?.map(h=>parseInt(h,16)) || [];
+    payload = new Uint8Array(b);
+  } else {
+    payload = new TextEncoder().encode(full);
+  }
+
   try {
-    let p;
-    if(O.hexSend){
-      const b=full.replace(/\s+/g,'').match(/.{1,2}/g)?.map(h=>parseInt(h,16))||[];
-      p=new Uint8Array(b);
-    } else p=new TextEncoder().encode(full);
-    for(let i=0;i<p.length;i+=MTU) await ble.char.writeValue(p.slice(i,i+MTU));
-    txB+=p.length; updBytes();
+    if(activeTransport === 'ble'){
+      for(let i=0; i<payload.length; i+=MTU){
+        await ble.char.writeValue(payload.slice(i, i+MTU));
+      }
+    } else {
+      await uart.writer.write(payload);
+    }
+    txB += payload.length; updBytes();
+
     if(!silent){
-      const t=full.trim();
+      const t = full.trim();
       if(O.txHex){
-        const h=Array.from(p).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
-        addLog('tx',`${t}  [${h}]`,'hex');
-      } else addLog('tx',t);
+        const h = Array.from(payload).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+        addLog('tx', `${t}  [${h}]`, 'hex');
+      } else {
+        addLog('tx', t);
+      }
     }
     return true;
   } catch(e){
-    toast(`${currentLang==='en'?'Send failed':'发送失败'}：${e.message}`,'err'); addLog('sys',`${currentLang==='en'?'Send failed':'发送失败'}：${e.message}`,'err');
+    toast(`${currentLang==='en'?'Send failed':'发送失败'}:${e.message}`,'err');
+    addLog('sys', `${currentLang==='en'?'Send failed':'发送失败'}:${e.message}`, 'err');
     return false;
   }
 }
 
-function doSend(){ const v=document.getElementById('send-inp').value; if(!v.trim()) return; sendRaw(v); }
-function onSKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();} }
+function doSend(){
+  const inp = document.getElementById('send-inp');
+  const v = inp.value;
+  if(!v.trim()) return;
+  // v3: push to history
+  if(sendHistory[0] !== v){
+    sendHistory.unshift(v);
+    if(sendHistory.length > MAX_HISTORY) sendHistory.pop();
+    saveSettings();
+  }
+  histIdx = -1;
+  sendRaw(v);
+}
+function onSKey(e){
+  const inp = document.getElementById('send-inp');
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); doSend(); return; }
+  // v3: history navigation (Up/Down only when at line bounds + no selection)
+  if(e.key==='ArrowUp' && !e.shiftKey){
+    const isAtTop = inp.selectionStart === 0 || !inp.value.slice(0, inp.selectionStart).includes('\n');
+    if(isAtTop && sendHistory.length){
+      e.preventDefault();
+      histIdx = Math.min(histIdx + 1, sendHistory.length - 1);
+      inp.value = sendHistory[histIdx];
+      setTimeout(()=>{ inp.setSelectionRange(inp.value.length, inp.value.length); }, 0);
+    }
+    return;
+  }
+  if(e.key==='ArrowDown' && !e.shiftKey){
+    const isAtBottom = inp.selectionStart === inp.value.length || !inp.value.slice(inp.selectionStart).includes('\n');
+    if(isAtBottom && histIdx >= 0){
+      e.preventDefault();
+      histIdx--;
+      inp.value = histIdx < 0 ? '' : sendHistory[histIdx];
+      setTimeout(()=>{ inp.setSelectionRange(inp.value.length, inp.value.length); }, 0);
+    }
+    return;
+  }
+}
 function onSInput(){
   if(!O.checksum) return;
   const b=new TextEncoder().encode(document.getElementById('send-inp').value);
@@ -2315,7 +2607,7 @@ async function sendMotor(d){
   }
 }
 function toggleAR(){ document.getElementById('tog-auto').checked ? startAR() : stopAR(); }
-function startAR(){ if(arTimer)return; arTimer=setInterval(()=>ble.conn&&sendRaw('GET_DATA',true),2000); }
+function startAR(){ if(arTimer)return; arTimer=setInterval(()=>isConn()&&sendRaw('GET_DATA',true),2000); }
 function stopAR(){ clearInterval(arTimer); arTimer=null; const c=document.getElementById('tog-auto'); if(c)c.checked=false; }
 
 /* ═══════════════════════════════════════════
@@ -2527,21 +2819,71 @@ function stopLoop(){ clearTimeout(loopTimer); loopTimer=null; }
 ═══════════════════════════════════════════ */
 const MAX_LOG=200;
 function addLog(dir,msg,style){
+  // v3: pause — buffer rx and sys, always show user's own tx
+  if(O.paused && dir !== 'tx'){
+    pauseBuffer.push({dir,msg,style,ts:new Date()});
+    if(pauseBuffer.length > MAX_PAUSE_BUFFER) pauseBuffer.shift();
+    // Update pause label with buffered count
+    const lbl = document.getElementById('pause-lbl');
+    if(lbl) lbl.textContent = `已暂停 (${pauseBuffer.length})`;
+    return;
+  }
+  _writeLogRow(dir, msg, style, new Date());
+}
+
+function _writeLogRow(dir, msg, style, t){
   const out=document.getElementById('term-out');
   const emp=document.getElementById('term-empty');
   if(emp&&emp.style.display!=='none') emp.style.display='none';
   while(out.children.length>=MAX_LOG) out.removeChild(out.firstChild);
-  const t=new Date();
   const ts=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':')
            +'.'+String(t.getMilliseconds()).padStart(3,'0');
-  const row=document.createElement('div'); row.className='t-row';
+  const row=document.createElement('div');
+  let rowCls = 't-row';
+  if(style==='frame-ok')  rowCls += ' frame-ok';
+  if(style==='frame-err') rowCls += ' frame-err';
+  row.className = rowCls;
   const dl={tx:'TX',rx:'RX',sys:'SYS'}[dir]||'SYS';
-  let mc=dir; if(style==='hex') mc+=' hex'; if(style==='err') mc='err';
+  let mc=dir;
+  if(style==='hex') mc+=' hex';
+  if(style==='err') mc='err';
+  if(style==='frame-ok' || style==='frame-err') mc += ' '+style;
   const tsH=O.showTs?`<span class="t-ts">${ts}</span>`:`<span class="t-ts">${ts.slice(0,8)}</span>`;
   row.innerHTML=`${tsH}<span class="t-dir ${dir}">${dl}</span><span class="t-msg ${mc}">${esc(msg)}</span>`;
   out.appendChild(row);
   if(O.autoScroll) out.scrollTop=out.scrollHeight;
   logN++; document.getElementById('sb-logn').textContent=logN;
+}
+
+/* v3: Pause / Resume */
+function togglePause(){
+  O.paused = !O.paused;
+  const btn = document.getElementById('tag-pause');
+  const lbl = document.getElementById('pause-lbl');
+  const out = document.getElementById('term-out');
+  if(O.paused){
+    btn.classList.add('paused');
+    lbl.textContent = '已暂停 (0)';
+    out.classList.add('paused');
+    addLog('sys', '─── 接收已暂停 (新数据将缓冲) ───');
+  } else {
+    btn.classList.remove('paused');
+    out.classList.remove('paused');
+    // Flush buffer
+    const buf = pauseBuffer.slice();
+    pauseBuffer = [];
+    if(buf.length){
+      _writeLogRow('sys', `─── 恢复接收，回放 ${buf.length} 条缓存 ───`, null, new Date());
+      for(const entry of buf){
+        _writeLogRow(entry.dir, entry.msg, entry.style, entry.ts);
+      }
+    }
+    lbl.textContent = '暂停接收';
+  }
+}
+
+function updFpsVis(){
+  document.getElementById('sb-fps-item').style.display = O.showFps ? '' : 'none';
 }
 
 function clearTerm(){
@@ -2617,6 +2959,130 @@ function toast(msg,type){
 }
 
 /* ═══════════════════════════════════════════
+   v3: Persistence (localStorage)
+═══════════════════════════════════════════ */
+const LS_KEY = 'lanmonitor-v3-state';
+let _saveTimer = null;
+function saveSettings(){
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{
+    try {
+      const state = {
+        ble:{svc:document.getElementById('svc-uuid')?.value, char:document.getElementById('char-uuid')?.value},
+        uart:{baud:document.querySelector('#tab-uart .sel:nth-of-type(1)')?.value},
+        opts:O,
+        qCmds: qCmds.map(c=>({cmd:c.cmd,note:c.note,hex:c.hex,delay:c.delay,on:c.on})),
+        blocks: blocks.map(b=>({type:b.type,cmd:b.cmd,note:b.note,hex:b.hex,delay:b.delay,on:b.on})),
+        sendHistory,
+        lang: currentLang
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+    } catch(e){ console.warn('save failed', e); }
+  }, 400);
+}
+function loadSettings(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+function applyLoadedState(s){
+  if(!s) return;
+  if(s.ble?.svc)  document.getElementById('svc-uuid').value = s.ble.svc;
+  if(s.ble?.char) document.getElementById('char-uuid').value = s.ble.char;
+  if(s.opts){
+    Object.assign(O, s.opts);
+    // sync checkboxes
+    const map = {'o-rxhex':'rxHex','o-scroll':'autoScroll','o-ts':'showTs','o-wrap':'wordWrap',
+                 'o-txhex':'txHex','o-nl':'nl','o-csum':'checksum','o-frame':'frameParser','o-stats':'showFps'};
+    for(const [id, key] of Object.entries(map)){
+      const el = document.getElementById(id);
+      if(el && key in O) el.checked = !!O[key];
+    }
+    if(O.wordWrap) document.getElementById('term-out').style.whiteSpace = 'pre-wrap';
+    if(O.checksum) document.getElementById('csum-show').style.display = 'inline';
+    updFpsVis();
+  }
+  if(Array.isArray(s.sendHistory)) sendHistory = s.sendHistory.slice(0, MAX_HISTORY);
+  // qCmds & blocks: clear defaults and reload
+  if(Array.isArray(s.qCmds) && s.qCmds.length){
+    qCmds = [];
+    qSeq = 0;
+    document.getElementById('qcmd-list').innerHTML = '';
+    s.qCmds.forEach(d=>addQCmd(d));
+  }
+  if(Array.isArray(s.blocks) && s.blocks.length){
+    blocks = [];
+    bSeq = 0;
+    document.getElementById('block-list').innerHTML = '';
+    s.blocks.forEach(d=>addBlock(d.type, d.cmd, TLABEL[d.type], d.note, d.hex, d.delay, d.on));
+  }
+}
+
+/* Patch qSet/bSet to save automatically */
+const _origQSet = qSet;
+qSet = function(id,k,v){ _origQSet(id,k,v); saveSettings(); };
+const _origBSet = bSet;
+bSet = function(id,k,v){ _origBSet(id,k,v); saveSettings(); };
+const _origAddQCmd = addQCmd;
+addQCmd = function(d){ _origAddQCmd(d); saveSettings(); };
+const _origAddBlock = addBlock;
+addBlock = function(...args){ _origAddBlock(...args); saveSettings(); };
+const _origQDel = qDel;
+qDel = function(id){ _origQDel(id); saveSettings(); };
+const _origBDel = bDel;
+bDel = function(id){ _origBDel(id); saveSettings(); };
+
+/* ═══════════════════════════════════════════
+   v3: Keyboard shortcuts
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', e=>{
+  // Don't hijack when typing in editable fields, except for specific combos
+  const inEditable = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
+  // Ctrl+L: clear terminal
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='l'){
+    e.preventDefault();
+    clearTerm();
+    return;
+  }
+  // Ctrl+K: focus send box
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){
+    e.preventDefault();
+    document.getElementById('send-inp').focus();
+    return;
+  }
+  // Ctrl+P: pause/resume
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='p'){
+    e.preventDefault();
+    togglePause();
+    return;
+  }
+  // Ctrl+D: connect/disconnect
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='d'){
+    e.preventDefault();
+    toggleConn();
+    return;
+  }
+  // Esc: close open menus
+  if(e.key === 'Escape'){
+    if(ddMainOpen) closeDDMain();
+    if(settingsOpen) togSettings();
+    return;
+  }
+});
+
+/* v3: auto-save on display option toggles */
+document.addEventListener('change', e=>{
+  if(e.target.matches('#o-rxhex, #o-txhex, #o-scroll, #o-ts, #o-wrap, #o-nl, #o-csum, #o-frame, #o-stats')){
+    saveSettings();
+  }
+  if(e.target.closest('#tab-uart') || e.target.id === 'svc-uuid' || e.target.id === 'char-uuid'){
+    saveSettings();
+  }
+});
+
+/* ═══════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════ */
 (function init(){
@@ -2638,7 +3104,14 @@ function toast(msg,type){
   addLog('sys',tr('LanMonitor 就绪 · 请点击「连接」配对 BLE 设备'));
   setSbn(tr('就绪 · 请连接 BLE 设备'));
   restorePrefs();
+  // v3: load saved state
+  const saved = loadSettings();
+  if(saved) applyLoadedState(saved);
+  updFpsVis();
+  syncConnectButton();
+  addLog('sys','快捷键: Ctrl+L 清空 · Ctrl+K 聚焦 · Ctrl+P 暂停 · Ctrl+D 连接/断开 · ↑↓ 翻历史');
 })();
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"7939e04a4baf43c8b86a560f74aac60e","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
