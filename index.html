@@ -1199,6 +1199,235 @@ body.light .toast{background:rgba(248,245,240,.97);}
 .toast.warn::before{background:var(--warn);}
 .toast.err::before {background:var(--err);}
 
+
+/* ═══════ v4 additions ═══════ */
+/* Center tab switcher (Terminal / Viz) */
+#center-tabs{
+  display:flex;border-bottom:1px solid var(--bd);
+  padding:0 14px;flex-shrink:0;
+  background:rgba(255,255,255,.012);
+}
+.ctab{
+  font-family:var(--kai);font-size:13px;padding:10px 14px 9px;
+  cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;
+  transition:color var(--dur),border-color var(--dur);
+  display:flex;align-items:center;gap:6px;user-select:none;white-space:nowrap;
+}
+.ctab:hover{color:var(--t1);}
+.ctab.on{color:var(--t1);border-bottom-color:var(--acc);}
+.ctab-badge{
+  font-size:10px;padding:1px 6px;border-radius:9px;
+  background:var(--acc-d);color:var(--acc);border:1px solid var(--acc-b);
+  font-family:var(--mono);
+}
+.cpane{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column;}
+.cpane.on{display:flex;}
+
+/* Search bar over terminal */
+#term-search{
+  position:absolute;top:8px;right:18px;z-index:5;
+  display:none;align-items:center;gap:6px;
+  background:rgba(11,12,15,.95);backdrop-filter:blur(16px);
+  border:1px solid var(--bdh);border-radius:var(--rs);
+  padding:5px 8px;animation:blur-in .2s var(--ease);
+}
+body.light #term-search{background:rgba(248,245,240,.96);}
+#term-search.open{display:flex;}
+#term-search input{
+  background:none;border:none;outline:none;
+  color:var(--t1);font-family:var(--mono);font-size:12px;
+  width:160px;padding:2px 4px;
+}
+.tsearch-btn{
+  background:none;border:none;color:var(--t3);cursor:pointer;padding:2px 5px;
+  border-radius:3px;font-family:var(--mono);font-size:11px;
+}
+.tsearch-btn:hover{color:var(--t1);background:var(--gh);}
+.tsearch-info{font-family:var(--mono);font-size:10px;color:var(--t3);min-width:40px;text-align:center;}
+.t-row.tsearch-hit{background:rgba(184,144,106,.16) !important;}
+.t-row.tsearch-current .t-msg{box-shadow:0 0 0 1px var(--acc);border-radius:2px;}
+.t-row.tsearch-dim{opacity:.22;}
+
+/* Recording indicator in topbar */
+.rec-dot{width:8px;height:8px;border-radius:50%;background:var(--err);animation:pip-blink .85s infinite;flex-shrink:0;}
+
+/* Data visualization */
+#viz-pane{padding:14px 16px;overflow-y:auto;}
+#viz-pane::-webkit-scrollbar{width:4px;}
+#viz-pane::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}
+.viz-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:14px;}
+.viz-card{
+  background:rgba(255,255,255,.025);border:1px solid var(--bd);border-radius:var(--r);
+  padding:12px;transition:border-color var(--dur);
+}
+.viz-card:hover{border-color:var(--bdh);}
+.viz-card-title{font-family:var(--kai);font-size:11px;color:var(--t3);letter-spacing:.06em;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
+.viz-card-val{font-size:22px;color:var(--t1);font-variant-numeric:tabular-nums;font-family:var(--mono);font-weight:500;}
+.viz-card-unit{font-size:11px;color:var(--t3);margin-left:5px;}
+.viz-card-stat{font-size:10px;color:var(--t3);margin-top:4px;font-family:var(--mono);}
+.viz-card-stat span{color:var(--t2);}
+.viz-chart{margin-top:10px;height:90px;position:relative;}
+.viz-chart canvas{width:100%;height:100%;display:block;}
+.viz-empty{font-family:var(--kai);font-size:12px;color:var(--t3);text-align:center;padding:30px 0;}
+.viz-controls{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+  padding-bottom:12px;border-bottom:1px solid var(--bd);
+}
+.viz-frame-card{
+  background:rgba(255,255,255,.018);border:1px solid var(--bd);border-radius:var(--r);
+  padding:14px 16px;
+}
+.viz-frame-title{font-family:var(--kai);font-size:13px;color:var(--t1);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.viz-frame-types{display:flex;gap:8px;flex-wrap:wrap;}
+.viz-ft-chip{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:var(--rs);border:1px solid var(--bd);
+  background:rgba(0,0,0,.18);font-family:var(--mono);font-size:11px;
+}
+body.light .viz-ft-chip{background:rgba(0,0,0,.04);}
+.viz-ft-chip .ft-icon{font-size:14px;}
+.viz-ft-chip .ft-count{color:var(--acc);font-variant-numeric:tabular-nums;}
+
+/* Frame editor modal */
+#frame-editor-bg{
+  position:fixed;inset:0;z-index:1100;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(14px) saturate(1.2);
+  display:none;align-items:center;justify-content:center;
+}
+#frame-editor-bg.open{display:flex;animation:modal-bg .35s ease;}
+.fe-card{
+  background:rgba(13,14,18,.98);
+  border:1px solid var(--bdh);border-radius:12px;
+  width:680px;max-width:92vw;max-height:84vh;
+  display:flex;flex-direction:column;
+  animation:modal-card .42s var(--spring) both;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);overflow:hidden;
+}
+body.light .fe-card{background:rgba(248,245,240,.99);}
+.fe-hdr{padding:18px 22px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;}
+.fe-title{font-family:var(--kai);font-size:16px;color:var(--t1);flex:1;letter-spacing:.06em;}
+.fe-body{padding:16px 22px;overflow-y:auto;flex:1;}
+.fe-row{display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;margin-bottom:9px;}
+.fe-row label{font-family:var(--kai);font-size:12px;color:var(--t2);}
+.fe-row input,.fe-row select{
+  background:rgba(0,0,0,.22);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:12px;
+  padding:6px 8px;outline:none;transition:border-color var(--dur);
+}
+body.light .fe-row input,body.light .fe-row select{background:rgba(0,0,0,.05);}
+.fe-row input:focus,.fe-row select:focus{border-color:var(--bdf);}
+.fe-section-title{font-family:var(--kai);font-size:11px;color:var(--t3);letter-spacing:.06em;margin:14px 0 8px;display:flex;align-items:center;gap:6px;}
+.fe-section-title::after{content:'';flex:1;height:1px;background:var(--bd);}
+.fe-types-list{display:flex;flex-direction:column;gap:6px;}
+.fe-type-row{
+  display:grid;grid-template-columns:60px 32px 1fr 36px 28px;gap:6px;align-items:center;
+  padding:5px 8px;background:rgba(255,255,255,.018);border:1px solid var(--bd);border-radius:var(--rs);
+}
+.fe-type-row input{
+  background:rgba(0,0,0,.22);border:1px solid var(--bd);border-radius:3px;
+  color:var(--t1);font-family:var(--mono);font-size:11px;
+  padding:4px 6px;outline:none;width:100%;
+}
+body.light .fe-type-row input{background:rgba(0,0,0,.05);}
+.fe-ft{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;}
+.fe-ft-info{font-family:var(--kai);font-size:11px;color:var(--t3);}
+.fe-foot{padding:14px 22px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px;}
+.fe-mini{
+  font-family:var(--kai);font-size:12px;padding:6px 14px;border-radius:var(--rs);
+  border:1px solid var(--bd);background:var(--glass);color:var(--t2);
+  cursor:pointer;transition:all var(--dur);outline:none;
+}
+.fe-mini:hover{background:var(--gh);border-color:var(--bdh);color:var(--t1);}
+.fe-mini.primary{color:var(--acc);border-color:var(--acc-b);background:var(--acc-d);}
+
+/* Recording / playback modal */
+#rec-bg{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.65);backdrop-filter:blur(14px);display:none;align-items:center;justify-content:center;}
+#rec-bg.open{display:flex;animation:modal-bg .35s ease;}
+.rec-card{
+  background:rgba(13,14,18,.98);border:1px solid var(--bdh);border-radius:12px;
+  width:520px;max-width:92vw;animation:modal-card .42s var(--spring) both;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+body.light .rec-card{background:rgba(248,245,240,.99);}
+.rec-hdr{padding:16px 22px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;}
+.rec-hdr .rec-dot{position:static;}
+.rec-title{font-family:var(--kai);font-size:15px;color:var(--t1);flex:1;}
+.rec-body{padding:16px 22px;}
+.rec-list{max-height:280px;overflow-y:auto;}
+.rec-item{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;
+  border:1px solid var(--bd);border-radius:var(--rs);margin-bottom:6px;
+  background:rgba(255,255,255,.018);
+}
+.rec-item .rec-name{flex:1;font-family:var(--kai);font-size:12px;color:var(--t1);}
+.rec-item .rec-meta{font-family:var(--mono);font-size:10px;color:var(--t3);}
+.rec-empty{font-family:var(--kai);font-size:12px;color:var(--t3);text-align:center;padding:24px 0;}
+
+/* Multi-port: source tag in log */
+.t-src{font-family:var(--mono);font-size:9.5px;padding:1px 5px;border-radius:3px;
+  letter-spacing:.04em;margin-right:6px;flex-shrink:0;}
+.t-src.ble{background:rgba(94,148,112,.16);color:#84b894;border:1px solid rgba(94,148,112,.3);}
+.t-src.uart{background:rgba(120,152,184,.16);color:#9ab8d0;border:1px solid rgba(120,152,184,.3);}
+.t-row.with-src{grid-template-columns:80px 36px 50px 1fr;}
+.t-row.with-src.no-ts{grid-template-columns:64px 36px 50px 1fr;}
+
+/* Send target selector next to send button */
+#send-target{
+  background:rgba(0,0,0,.24);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--kai);font-size:12px;
+  padding:0 22px 0 9px;outline:none;cursor:pointer;height:38px;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23716c65' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;
+  transition:border-color var(--dur);
+}
+body.light #send-target{background-color:rgba(0,0,0,.05);}
+#send-target:focus{border-color:var(--bdf);}
+#send-target:disabled{opacity:.3;cursor:not-allowed;}
+
+/* Template variable modal */
+#tpl-bg{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.6);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;}
+#tpl-bg.open{display:flex;animation:modal-bg .3s ease;}
+.tpl-card{
+  background:rgba(13,14,18,.98);border:1px solid var(--bdh);border-radius:12px;
+  width:420px;max-width:92vw;animation:modal-card .4s var(--spring) both;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+body.light .tpl-card{background:rgba(248,245,240,.99);}
+.tpl-hdr{padding:14px 18px;border-bottom:1px solid var(--bd);font-family:var(--kai);font-size:14px;color:var(--t1);}
+.tpl-body{padding:14px 18px;}
+.tpl-cmd-preview{
+  font-family:var(--mono);font-size:11px;color:var(--t2);
+  padding:7px 10px;background:rgba(0,0,0,.22);border:1px solid var(--bd);border-radius:var(--rs);
+  margin-bottom:12px;word-break:break-all;
+}
+body.light .tpl-cmd-preview{background:rgba(0,0,0,.05);}
+.tpl-cmd-preview .tpl-var-name{color:var(--acc);}
+.tpl-row{display:grid;grid-template-columns:100px 1fr;gap:8px;align-items:center;margin-bottom:8px;}
+.tpl-row label{font-family:var(--kai);font-size:12px;color:var(--t2);}
+.tpl-row input{
+  background:rgba(0,0,0,.22);border:1px solid var(--bd);border-radius:var(--rs);
+  color:var(--t1);font-family:var(--mono);font-size:12px;
+  padding:6px 9px;outline:none;
+}
+body.light .tpl-row input{background:rgba(0,0,0,.05);}
+.tpl-foot{padding:12px 18px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px;}
+
+/* BLE/UART dual connection chips */
+.dual-chip{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;
+  border:1px solid var(--bd);background:var(--glass);
+  font-family:var(--kai);font-size:12px;color:var(--t2);
+  cursor:pointer;transition:all var(--dur);
+}
+.dual-chip:hover{border-color:var(--bdh);color:var(--t1);background:var(--gh);}
+.dual-chip.live{border-color:rgba(94,148,112,.4);color:var(--ok);}
+.dual-chip .ck-label{font-family:var(--mono);font-size:10px;opacity:.8;}
+.dual-chip .pip{width:7px;height:7px;border-radius:50%;background:var(--err);transition:all var(--dur);flex-shrink:0;}
+.dual-chip .pip.connecting{background:var(--warn);animation:pip-blink .85s infinite;}
+.dual-chip .pip.connected{background:var(--ok);box-shadow:0 0 5px var(--ok);}
+
 /* ═══════ v3 additions ═══════ */
 .tb-tag.paused{color:var(--warn);border-color:rgba(158,143,90,.4);background:rgba(158,143,90,.10);}
 .tb-tag.paused::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn);margin-right:5px;display:inline-block;animation:pip-blink .85s infinite;}
@@ -1275,11 +1504,19 @@ body.light .kbd-hint{background:rgba(0,0,0,.04);}
   </button>
 
   <div class="tb-right">
-    <!-- Connection -->
-    <div id="conn-chip" onclick="toggleConn()">
-      <div id="pip"></div>
-      <span id="conn-lbl">未连接</span>
+    <!-- v4: dual connection chips -->
+    <div class="dual-chip" id="chip-ble" onclick="toggleBLE()" title="蓝牙连接 (Ctrl+B)">
+      <div class="pip" id="pip-ble"></div>
+      <span class="ck-label">BLE</span>
+      <span id="conn-lbl-ble">未连接</span>
     </div>
+    <div class="dual-chip" id="chip-uart" onclick="toggleUART()" title="串口连接 (Ctrl+U)">
+      <div class="pip" id="pip-uart"></div>
+      <span class="ck-label">UART</span>
+      <span id="conn-lbl-uart">未连接</span>
+    </div>
+    <!-- legacy chip kept hidden for compatibility -->
+    <div id="conn-chip" style="display:none;"><div id="pip"></div><span id="conn-lbl">未连接</span></div>
 
     <!-- Help / manual -->
     <button class="tb-btn" title="使用说明" onclick="showModal()">
@@ -1450,13 +1687,63 @@ body.light .kbd-hint{background:rgba(0,0,0,.04);}
 
   <!-- ─ CENTER ─ -->
   <div id="center">
+    <!-- v4: center tab switcher -->
+    <div id="center-tabs">
+      <div class="ctab on" id="ctab-term" onclick="switchCenter('term')">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2 4l3 3-3 3M7 10h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        终端
+      </div>
+      <div class="ctab" id="ctab-viz" onclick="switchCenter('viz')">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2 10l3-3 3 2 4-5M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        数据可视化
+      </div>
+      <div style="flex:1;"></div>
+      <div class="ctab" id="ctab-fe" onclick="openFrameEditor()" title="协议帧编辑器" style="border-bottom:none;">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 3h12v8H1zM4 3v8M9 3v8" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+        帧编辑器
+      </div>
+      <div class="ctab" id="ctab-rec" onclick="openRecPanel()" title="录制/回放" style="border-bottom:none;">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" fill="currentColor"/></svg>
+        <span id="rec-tab-lbl">录制</span>
+      </div>
+    </div>
+
+    <div class="cpane on" id="cpane-term">
     <div id="term-wrap">
+      <!-- v4: search overlay -->
+      <div id="term-search">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <input id="term-search-inp" placeholder="搜索..." oninput="onSearchInput(this.value)" onkeydown="onSearchKey(event)"/>
+        <span class="tsearch-info" id="tsearch-info">0/0</span>
+        <button class="tsearch-btn" onclick="searchNav(-1)" title="上一个 (Shift+Enter)">▲</button>
+        <button class="tsearch-btn" onclick="searchNav(1)" title="下一个 (Enter)">▼</button>
+        <button class="tsearch-btn" onclick="closeSearch()" title="关闭 (Esc)">✕</button>
+      </div>
       <div id="term-empty">
         <div class="eic">◎</div>
         <div class="etx">连接设备后开始接收数据</div>
       </div>
       <div id="term-out"></div>
     </div>
+    </div><!-- /cpane-term -->
+
+    <!-- v4: visualization pane -->
+    <div class="cpane" id="cpane-viz">
+      <div id="viz-pane">
+        <div class="viz-controls">
+          <button class="btn" onclick="vizClear()">清空数据</button>
+          <button class="btn" id="viz-pause-btn" onclick="vizTogglePause()">暂停采样</button>
+          <div style="flex:1;"></div>
+          <span style="font-family:var(--kai);font-size:11px;color:var(--t3);">采样上限</span>
+          <input class="ninp" id="viz-max" type="number" min="20" value="200" style="width:60px;"
+                 onchange="VIZ.maxPoints=parseInt(this.value)||200"/>
+        </div>
+        <div id="viz-content">
+          <div class="viz-empty">尚无采样数据 · 接收 <code style="color:var(--acc);">TEMP:x</code> / <code style="color:var(--acc);">HUM:x</code> / <code style="color:var(--acc);">DIST:x</code> 等键值会自动绘制</div>
+        </div>
+      </div>
+    </div><!-- /cpane-viz -->
+
     <div id="send-zone">
       <div id="send-bar">
         <button class="stag on"    id="st-nl"   onclick="togSTag(this,'nl')">自动 \n</button>
@@ -1472,6 +1759,12 @@ body.light .kbd-hint{background:rgba(0,0,0,.04);}
         <button class="stag danger" onclick="document.getElementById('send-inp').value=''">清空</button>
       </div>
       <div id="send-row">
+        <select id="send-target" disabled title="发送目标">
+          <option value="auto">自动</option>
+          <option value="ble">仅 BLE</option>
+          <option value="uart">仅 UART</option>
+          <option value="all">全部</option>
+        </select>
         <textarea id="send-inp" placeholder="输入发送内容，Enter 发送，Shift+Enter 换行…" disabled onkeydown="onSKey(event)" oninput="onSInput()"></textarea>
         <button id="btn-send" disabled onclick="doSend()">
           <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 6-12 6V8.5l9-2.5-9-2.5V1z" fill="currentColor"/></svg>
@@ -1682,6 +1975,117 @@ body.light .kbd-hint{background:rgba(0,0,0,.04);}
   </div>
 </div>
 
+<!-- v4: Frame Editor Modal -->
+<div id="frame-editor-bg">
+  <div class="fe-card">
+    <div class="fe-hdr">
+      <div class="fe-title">协议帧编辑器</div>
+      <button class="fe-mini" onclick="closeFrameEditor()">✕</button>
+    </div>
+    <div class="fe-body" id="fe-body">
+      <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-bottom:14px;line-height:1.7;">
+        定义二进制帧格式让接收端自动识别。固定帧头帧尾,类型字节用查找表标注。
+      </div>
+
+      <div class="fe-section-title">基本设置</div>
+
+      <div class="fe-row">
+        <label>启用</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="fe-enable" style="width:auto;"/>
+          <span style="font-family:var(--kai);font-size:12px;color:var(--t2);">使用此自定义帧格式</span>
+        </label>
+      </div>
+
+      <div class="fe-row">
+        <label>协议名称</label>
+        <input type="text" id="fe-name" placeholder="OpenMV 红绿灯"/>
+      </div>
+
+      <div class="fe-section-title">帧结构</div>
+
+      <div class="fe-row">
+        <label>帧头 (hex)</label>
+        <input type="text" id="fe-head" placeholder="AA 55"/>
+      </div>
+      <div class="fe-row">
+        <label>帧尾 (hex)</label>
+        <input type="text" id="fe-tail" placeholder="0D 0A"/>
+      </div>
+      <div class="fe-row">
+        <label>类型偏移</label>
+        <input type="number" id="fe-type-off" min="0" placeholder="2"/>
+      </div>
+      <div class="fe-row">
+        <label>校验类型</label>
+        <select id="fe-csum-type">
+          <option value="none">无</option>
+          <option value="xor">XOR (type ^ key)</option>
+          <option value="sum">SUM (求和后取低字节)</option>
+        </select>
+      </div>
+      <div class="fe-row" id="fe-row-key">
+        <label>校验密钥</label>
+        <input type="text" id="fe-csum-key" placeholder="5A (hex)"/>
+      </div>
+      <div class="fe-row">
+        <label>校验偏移</label>
+        <input type="number" id="fe-csum-off" min="0" placeholder="3"/>
+      </div>
+
+      <div class="fe-section-title">类型查找表
+        <button class="fe-mini" onclick="feAddType()" style="margin-left:auto;font-size:11px;padding:3px 10px;">+ 新增</button>
+      </div>
+      <div class="fe-types-list" id="fe-types-list"></div>
+
+      <div class="fe-ft">
+        <span class="fe-ft-info">改动后请点保存,刷新页面不丢</span>
+      </div>
+    </div>
+    <div class="fe-foot">
+      <button class="fe-mini" onclick="feLoadDefault()">载入默认 (OpenMV)</button>
+      <button class="fe-mini" onclick="closeFrameEditor()">取消</button>
+      <button class="fe-mini primary" onclick="feSave()">保存生效</button>
+    </div>
+  </div>
+</div>
+
+<!-- v4: Recording / Playback Panel -->
+<div id="rec-bg">
+  <div class="rec-card">
+    <div class="rec-hdr">
+      <div class="rec-dot" id="rec-active-dot" style="display:none;"></div>
+      <div class="rec-title">数据录制 / 回放</div>
+      <button class="fe-mini" onclick="closeRecPanel()">✕</button>
+    </div>
+    <div class="rec-body">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn" id="rec-start-btn" onclick="recToggle()" style="flex:1;">开始录制</button>
+        <button class="btn" onclick="recExportAll()" style="flex:1;">导出全部为 JSON</button>
+      </div>
+      <div style="font-family:var(--kai);font-size:11px;color:var(--t3);margin-bottom:10px;">已保存的录制</div>
+      <div class="rec-list" id="rec-list">
+        <div class="rec-empty">尚未录制</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- v4: Template Variable Modal -->
+<div id="tpl-bg">
+  <div class="tpl-card">
+    <div class="tpl-hdr">填写模板变量</div>
+    <div class="tpl-body">
+      <div class="tpl-cmd-preview" id="tpl-cmd-preview"></div>
+      <div id="tpl-vars"></div>
+    </div>
+    <div class="tpl-foot">
+      <button class="fe-mini" onclick="closeTpl()">取消</button>
+      <button class="fe-mini primary" onclick="confirmTpl()">发送</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
@@ -1712,8 +2116,43 @@ const O = {
   nl:true, hexSend:false, checksum:false,
   autoSend:false, loopSend:false,
   /* v3 new options */
-  paused:false, frameParser:true, showFps:true
+  paused:false, frameParser:true, showFps:true,
+  /* v4 new options */
+  sendTarget:'auto', centerTab:'term'
 };
+
+/* v4: visualization data */
+const VIZ = {
+  paused:false, maxPoints:200,
+  series:{}   // key -> { values:[{t,v}], unit, min, max, last }
+};
+
+/* v4: recording state */
+const REC = {
+  active:false, startTime:0, events:[], list:[]
+};
+
+/* v4: custom frame format */
+const FRAME_CFG = {
+  enabled:true, name:'OpenMV 红绿灯',
+  head:[0xAA, 0x55], tail:[0x0D, 0x0A],
+  typeOff:2, csumOff:3,
+  csumType:'xor', csumKey:0x5A,
+  types:{
+    0x00:{label:'NONE',  icon:'⚪'},
+    0x01:{label:'RED',   icon:'🔴'},
+    0x02:{label:'GREEN', icon:'🟢'}
+  }
+};
+
+/* v4: frame type counters for viz */
+const FRAME_STATS = {};
+
+/* v4: search state */
+const SEARCH = {open:false, term:'', hits:[], idx:-1};
+
+/* v4: template var modal state */
+let _tplPending = null;
 
 /* v3: send history + frame stats */
 let sendHistory = [];
@@ -2959,6 +3398,947 @@ function toast(msg,type){
 }
 
 /* ═══════════════════════════════════════════
+   v4: Multi-port (BLE + UART concurrent)
+═══════════════════════════════════════════ */
+async function toggleBLE(){ ble.conn ? bleDisc() : bleConn(); }
+async function toggleUART(){ uart.conn ? uartDisc() : uartConn(); }
+
+function syncDualChips(){
+  // BLE chip
+  const cBle = document.getElementById('chip-ble');
+  const pBle = document.getElementById('pip-ble');
+  const lBle = document.getElementById('conn-lbl-ble');
+  if(cBle && pBle && lBle){
+    pBle.className = 'pip';
+    if(ble.conn){
+      pBle.classList.add('connected'); cBle.classList.add('live');
+      lBle.textContent = ble.device?.name?.slice(0,12) || '已连接';
+    } else {
+      cBle.classList.remove('live');
+      lBle.textContent = '未连接';
+    }
+  }
+  // UART chip
+  const cU = document.getElementById('chip-uart');
+  const pU = document.getElementById('pip-uart');
+  const lU = document.getElementById('conn-lbl-uart');
+  if(cU && pU && lU){
+    pU.className = 'pip';
+    if(uart.conn){
+      pU.classList.add('connected'); cU.classList.add('live');
+      lU.textContent = currentUartBaud()+'';
+    } else {
+      cU.classList.remove('live');
+      lU.textContent = '未连接';
+    }
+  }
+  // Update send target dropdown options availability
+  const tgt = document.getElementById('send-target');
+  if(tgt){
+    const anyConn = ble.conn || uart.conn;
+    tgt.disabled = !anyConn;
+    document.getElementById('send-inp').disabled = !anyConn;
+    document.getElementById('btn-send').disabled = !anyConn;
+    // Update statusbar
+    if(anyConn){
+      const parts = [];
+      if(ble.conn) parts.push('BLE');
+      if(uart.conn) parts.push('UART '+currentUartBaud());
+      setSbn('已连接: '+parts.join(' + '));
+    } else {
+      setSbn('就绪 · 请连接 BLE 或 UART 设备');
+    }
+  }
+  // Update enableCtrls so device control panel works when ANY transport is up
+  enableDeviceCtrls(ble.conn || uart.conn);
+}
+
+function enableDeviceCtrls(on){
+  document.querySelectorAll('.ctrl').forEach(el=>el.disabled=!on);
+  document.querySelectorAll('.ctrl-b').forEach(el=>el.disabled=!on);
+  document.querySelectorAll('.ctrl-q').forEach(el=>el.disabled=!on);
+  const psl = document.getElementById('pwm-sl'); if(psl) psl.disabled=!on;
+  const tog = document.getElementById('tog-auto'); if(tog) tog.disabled=!on;
+  if(!on){ stopAR(); stopAS(); stopLoop(); }
+}
+
+/* v4: tag-aware logging — accept optional source = 'ble'|'uart' */
+function _origAddLogRef(){ return _writeLogRow; }
+const _origWriteLogRow = _writeLogRow;
+function _writeLogRowWithSrc(dir, msg, style, t, src){
+  const out=document.getElementById('term-out');
+  const emp=document.getElementById('term-empty');
+  if(emp && emp.style.display!=='none') emp.style.display='none';
+  while(out.children.length>=MAX_LOG) out.removeChild(out.firstChild);
+  const ts=[t.getHours(),t.getMinutes(),t.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':')
+           +'.'+String(t.getMilliseconds()).padStart(3,'0');
+  const row=document.createElement('div');
+  let rowCls = 't-row';
+  if(style==='frame-ok')  rowCls += ' frame-ok';
+  if(style==='frame-err') rowCls += ' frame-err';
+  if(src) rowCls += ' with-src';
+  if(src && !O.showTs) rowCls += ' no-ts';
+  row.className = rowCls;
+  const dl={tx:'TX',rx:'RX',sys:'SYS'}[dir]||'SYS';
+  let mc=dir;
+  if(style==='hex') mc+=' hex';
+  if(style==='err') mc='err';
+  if(style==='frame-ok' || style==='frame-err') mc += ' '+style;
+  const tsH=O.showTs?`<span class="t-ts">${ts}</span>`:`<span class="t-ts">${ts.slice(0,8)}</span>`;
+  const srcH = src ? `<span class="t-src ${src}">${src.toUpperCase()}</span>` : '';
+  row.innerHTML=`${tsH}<span class="t-dir ${dir}">${dl}</span>${srcH}<span class="t-msg ${mc}">${esc(msg)}</span>`;
+  // For search support
+  row.dataset.text = msg;
+  out.appendChild(row);
+  if(O.autoScroll) out.scrollTop=out.scrollHeight;
+  logN++; document.getElementById('sb-logn').textContent=logN;
+  // Recording
+  if(REC.active){
+    REC.events.push({t:performance.now()-REC.startTime, dir, msg, style, src});
+  }
+  // Search refresh
+  if(SEARCH.open && SEARCH.term){
+    if(msg.toLowerCase().includes(SEARCH.term.toLowerCase())){
+      row.classList.add('tsearch-hit');
+      SEARCH.hits.push(row);
+      updateSearchInfo();
+    }
+  }
+}
+// Override _writeLogRow to support optional src param
+window._writeLogRow = function(dir, msg, style, t, src){
+  _writeLogRowWithSrc(dir, msg, style, t, src);
+};
+
+/* Wrap addLog to thread `src` through (uses last arg or sticky context) */
+let _logSrcCtx = null;
+function _logWithSrc(dir, msg, style, src){
+  if(O.paused && dir !== 'tx'){
+    pauseBuffer.push({dir, msg, style, ts:new Date(), src});
+    if(pauseBuffer.length > MAX_PAUSE_BUFFER) pauseBuffer.shift();
+    const lbl = document.getElementById('pause-lbl');
+    if(lbl) lbl.textContent = `已暂停 (${pauseBuffer.length})`;
+    return;
+  }
+  _writeLogRow(dir, msg, style, new Date(), src);
+}
+
+/* Hijack BLE/UART RX paths to emit with src tag (only when both connected) */
+function _shouldTagSrc(){ return ble.conn && uart.conn; }
+
+const _origOnBleRx = onBleRx;
+onBleRx = function(e){
+  const raw=e.target.value; rxB+=raw.byteLength; updBytes();
+  _logSrcCtx = _shouldTagSrc() ? 'ble' : null;
+  processIncoming(new Uint8Array(raw.buffer));
+  _logSrcCtx = null;
+};
+
+const _origUartReadLoop = uartReadLoop;
+uartReadLoop = async function(){
+  if(uart.readLoopRunning) return;
+  uart.readLoopRunning = true;
+  while(uart.conn && uart.port?.readable){
+    uart.reader = uart.port.readable.getReader();
+    try {
+      while(true){
+        const {value, done} = await uart.reader.read();
+        if(done) break;
+        if(value){
+          rxB += value.byteLength;
+          updBytes();
+          _logSrcCtx = _shouldTagSrc() ? 'uart' : null;
+          processIncoming(value);
+          _logSrcCtx = null;
+        }
+      }
+    } catch(e){
+      if(uart.conn) addLog('sys', `RX:${e.message}`, 'err');
+    } finally {
+      try { uart.reader.releaseLock(); } catch{}
+      uart.reader = null;
+    }
+  }
+  uart.readLoopRunning = false;
+};
+
+/* Wrap addLog to thread the contextual source through */
+const _origAddLog = addLog;
+addLog = function(dir, msg, style){
+  // tx logs derive src from sendTarget; rx/sys derive from _logSrcCtx
+  let src = null;
+  if(dir === 'tx'){
+    if(ble.conn && uart.conn){
+      const t = O.sendTarget;
+      if(t==='ble') src='ble';
+      else if(t==='uart') src='uart';
+      else if(t==='all') src=null;     // tagged separately in sendRaw
+      else src = null;                  // 'auto' — already logged per-port
+    }
+  } else {
+    src = _logSrcCtx;
+  }
+  if(O.paused && dir !== 'tx'){
+    pauseBuffer.push({dir, msg, style, ts:new Date(), src});
+    if(pauseBuffer.length > MAX_PAUSE_BUFFER) pauseBuffer.shift();
+    const lbl = document.getElementById('pause-lbl');
+    if(lbl) lbl.textContent = `已暂停 (${pauseBuffer.length})`;
+    return;
+  }
+  _writeLogRow(dir, msg, style, new Date(), src);
+};
+
+/* Override sendRaw to route based on O.sendTarget */
+const _origSendRaw = sendRaw;
+sendRaw = async function(cmd, silent){
+  // Determine targets
+  const t = O.sendTarget;
+  const targets = [];
+  if(t === 'all'){
+    if(ble.conn)  targets.push('ble');
+    if(uart.conn) targets.push('uart');
+  } else if(t === 'ble' && ble.conn){
+    targets.push('ble');
+  } else if(t === 'uart' && uart.conn){
+    targets.push('uart');
+  } else {
+    // 'auto'
+    if(ble.conn && uart.conn){
+      // Both connected, default to whichever tab is active
+      targets.push(activeTransport);
+    } else if(ble.conn){
+      targets.push('ble');
+    } else if(uart.conn){
+      targets.push('uart');
+    }
+  }
+  if(!targets.length){
+    if(!silent) toast('请先连接设备', 'warn');
+    return false;
+  }
+  const full = O.nl ? (cmd.endsWith('\n') ? cmd : cmd + '\n') : cmd;
+  let payload;
+  if(O.hexSend){
+    const b = full.replace(/\s+/g,'').match(/.{1,2}/g)?.map(h=>parseInt(h,16)) || [];
+    payload = new Uint8Array(b);
+  } else {
+    payload = new TextEncoder().encode(full);
+  }
+  let allOk = true;
+  for(const tgt of targets){
+    try {
+      if(tgt === 'ble'){
+        for(let i=0; i<payload.length; i+=MTU){
+          await ble.char.writeValue(payload.slice(i, i+MTU));
+        }
+      } else {
+        await uart.writer.write(payload);
+      }
+      txB += payload.length;
+    } catch(e){
+      allOk = false;
+      toast(`${tgt.toUpperCase()} 发送失败: ${e.message}`, 'err');
+      addLog('sys', `${tgt.toUpperCase()} 发送失败: ${e.message}`, 'err');
+    }
+    if(!silent){
+      const ts = full.trim();
+      const showSrc = (ble.conn && uart.conn) ? tgt : null;
+      if(O.txHex){
+        const h = Array.from(payload).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+        if(showSrc){
+          _writeLogRow('tx', `${ts}  [${h}]`, 'hex', new Date(), showSrc);
+        } else {
+          addLog('tx', `${ts}  [${h}]`, 'hex');
+        }
+      } else {
+        if(showSrc){
+          _writeLogRow('tx', ts, null, new Date(), showSrc);
+        } else {
+          addLog('tx', ts);
+        }
+      }
+    }
+  }
+  updBytes();
+  return allOk;
+};
+
+/* ═══════════════════════════════════════════
+   v4: Configurable frame parser
+═══════════════════════════════════════════ */
+/* Override parseBinaryFrames to use FRAME_CFG */
+function parseBinaryFrames(bytes){
+  if(!FRAME_CFG.enabled) return;
+  const frameLen = FRAME_CFG.head.length + FRAME_CFG.tail.length + 2; // type + csum (minimum)
+  const totalLen = Math.max(FRAME_CFG.csumOff + 1, FRAME_CFG.typeOff + 1, FRAME_CFG.head.length) + FRAME_CFG.tail.length;
+  for(const b of bytes){
+    frameAcc.push(b);
+    if(frameAcc.length > totalLen) frameAcc.shift();
+    if(frameAcc.length === totalLen){
+      // Check header
+      let headOK = true;
+      for(let i=0;i<FRAME_CFG.head.length;i++){
+        if(frameAcc[i] !== FRAME_CFG.head[i]){ headOK = false; break; }
+      }
+      // Check tail
+      let tailOK = true;
+      for(let i=0;i<FRAME_CFG.tail.length;i++){
+        if(frameAcc[totalLen - FRAME_CFG.tail.length + i] !== FRAME_CFG.tail[i]){ tailOK = false; break; }
+      }
+      if(headOK && tailOK){
+        const type = frameAcc[FRAME_CFG.typeOff];
+        const csumByte = frameAcc[FRAME_CFG.csumOff];
+        const hex = frameAcc.map(x=>x.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+        let csumOK = true;
+        if(FRAME_CFG.csumType === 'xor'){
+          csumOK = (type ^ FRAME_CFG.csumKey) === csumByte;
+        } else if(FRAME_CFG.csumType === 'sum'){
+          // sum of bytes from end of head to before csum
+          let s = 0;
+          for(let i = FRAME_CFG.head.length; i < FRAME_CFG.csumOff; i++) s += frameAcc[i];
+          csumOK = (s & 0xFF) === csumByte;
+        }
+        if(csumOK){
+          const meta = FRAME_CFG.types[type] || {label:`0x${type.toString(16).padStart(2,'0').toUpperCase()}`, icon:'❓'};
+          addLog('rx', `${meta.icon} ${meta.label}  [${hex}]`, 'frame-ok');
+          // Update frame stats for viz
+          const key = meta.label;
+          FRAME_STATS[key] = (FRAME_STATS[key] || 0) + 1;
+          updFrameStatsDisplay();
+        } else {
+          addLog('rx', `校验错误 [${hex}]`, 'frame-err');
+        }
+        frameAcc = [];
+      }
+    }
+  }
+}
+
+function updFrameStatsDisplay(){
+  const host = document.getElementById('viz-frame-types');
+  if(!host) return;
+  const sorted = Object.entries(FRAME_STATS).sort((a,b)=>b[1]-a[1]);
+  host.innerHTML = sorted.map(([k,v])=>{
+    let icon = '❓';
+    for(const [code, m] of Object.entries(FRAME_CFG.types)){
+      if(m.label === k){ icon = m.icon; break; }
+    }
+    return `<div class="viz-ft-chip"><span class="ft-icon">${icon}</span><span>${esc(k)}</span><span class="ft-count">${v}</span></div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   v4: Frame editor UI
+═══════════════════════════════════════════ */
+function openFrameEditor(){
+  // Load current cfg into UI
+  document.getElementById('fe-enable').checked = FRAME_CFG.enabled;
+  document.getElementById('fe-name').value = FRAME_CFG.name;
+  document.getElementById('fe-head').value = FRAME_CFG.head.map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+  document.getElementById('fe-tail').value = FRAME_CFG.tail.map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+  document.getElementById('fe-type-off').value = FRAME_CFG.typeOff;
+  document.getElementById('fe-csum-off').value = FRAME_CFG.csumOff;
+  document.getElementById('fe-csum-type').value = FRAME_CFG.csumType;
+  document.getElementById('fe-csum-key').value = FRAME_CFG.csumKey.toString(16).padStart(2,'0').toUpperCase();
+  renderFETypes();
+  document.getElementById('frame-editor-bg').classList.add('open');
+}
+function closeFrameEditor(){ document.getElementById('frame-editor-bg').classList.remove('open'); }
+function renderFETypes(){
+  const list = document.getElementById('fe-types-list');
+  list.innerHTML = '';
+  Object.entries(FRAME_CFG.types).forEach(([code, meta])=>{
+    const row = document.createElement('div');
+    row.className = 'fe-type-row';
+    row.innerHTML = `
+      <input type="text" placeholder="0x00" value="0x${parseInt(code).toString(16).padStart(2,'0').toUpperCase()}" data-k="code"/>
+      <input type="text" placeholder="🔴" value="${esc(meta.icon)}" data-k="icon" style="text-align:center;"/>
+      <input type="text" placeholder="名称" value="${esc(meta.label)}" data-k="label"/>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--t3);text-align:center;">${parseInt(code)}</span>
+      <button class="fe-mini" onclick="this.parentElement.remove()" style="font-size:11px;padding:2px 6px;">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+function feAddType(){
+  const list = document.getElementById('fe-types-list');
+  const next = list.children.length;
+  const row = document.createElement('div');
+  row.className = 'fe-type-row';
+  row.innerHTML = `
+    <input type="text" placeholder="0x00" value="0x${next.toString(16).padStart(2,'0').toUpperCase()}" data-k="code"/>
+    <input type="text" placeholder="🔵" value="" data-k="icon" style="text-align:center;"/>
+    <input type="text" placeholder="名称" value="" data-k="label"/>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--t3);text-align:center;">${next}</span>
+    <button class="fe-mini" onclick="this.parentElement.remove()" style="font-size:11px;padding:2px 6px;">✕</button>
+  `;
+  list.appendChild(row);
+}
+function feLoadDefault(){
+  FRAME_CFG.enabled = true;
+  FRAME_CFG.name = 'OpenMV 红绿灯';
+  FRAME_CFG.head = [0xAA, 0x55];
+  FRAME_CFG.tail = [0x0D, 0x0A];
+  FRAME_CFG.typeOff = 2;
+  FRAME_CFG.csumOff = 3;
+  FRAME_CFG.csumType = 'xor';
+  FRAME_CFG.csumKey = 0x5A;
+  FRAME_CFG.types = {
+    0x00:{label:'NONE',  icon:'⚪'},
+    0x01:{label:'RED',   icon:'🔴'},
+    0x02:{label:'GREEN', icon:'🟢'}
+  };
+  openFrameEditor();   // re-render
+  toast('已载入 OpenMV 默认配置', 'ok');
+}
+function feSave(){
+  try {
+    FRAME_CFG.enabled = document.getElementById('fe-enable').checked;
+    FRAME_CFG.name = document.getElementById('fe-name').value.trim() || 'Custom';
+    const parseHex = s => s.trim().split(/\s+/).filter(Boolean).map(x=>parseInt(x.replace(/^0x/i,''),16)).filter(n=>!isNaN(n));
+    FRAME_CFG.head = parseHex(document.getElementById('fe-head').value);
+    FRAME_CFG.tail = parseHex(document.getElementById('fe-tail').value);
+    FRAME_CFG.typeOff = parseInt(document.getElementById('fe-type-off').value) || 0;
+    FRAME_CFG.csumOff = parseInt(document.getElementById('fe-csum-off').value) || 0;
+    FRAME_CFG.csumType = document.getElementById('fe-csum-type').value;
+    FRAME_CFG.csumKey = parseInt(document.getElementById('fe-csum-key').value.replace(/^0x/i,''),16) || 0;
+    FRAME_CFG.types = {};
+    document.querySelectorAll('#fe-types-list .fe-type-row').forEach(row=>{
+      const inputs = row.querySelectorAll('input');
+      const code  = parseInt(inputs[0].value.replace(/^0x/i,''),16);
+      const icon  = inputs[1].value.trim() || '◆';
+      const label = inputs[2].value.trim() || 'Type'+code;
+      if(!isNaN(code)) FRAME_CFG.types[code] = {label, icon};
+    });
+    frameAcc = [];
+    saveSettings();
+    closeFrameEditor();
+    toast('帧格式已生效','ok');
+  } catch(e){ toast('保存失败: '+e.message,'err'); }
+}
+
+/* ═══════════════════════════════════════════
+   v4: Recording / Playback
+═══════════════════════════════════════════ */
+function openRecPanel(){
+  renderRecList();
+  document.getElementById('rec-bg').classList.add('open');
+}
+function closeRecPanel(){ document.getElementById('rec-bg').classList.remove('open'); }
+function recToggle(){
+  if(REC.active){
+    // stop
+    REC.active = false;
+    document.getElementById('rec-active-dot').style.display = 'none';
+    document.getElementById('rec-start-btn').textContent = '开始录制';
+    document.getElementById('rec-tab-lbl').textContent = '录制';
+    const item = {
+      id: Date.now(),
+      name: new Date().toLocaleString('zh-CN'),
+      duration: performance.now() - REC.startTime,
+      events: REC.events.slice()
+    };
+    REC.list.unshift(item);
+    if(REC.list.length > 20) REC.list.length = 20;
+    saveSettings();
+    renderRecList();
+    toast(`录制完成 · ${item.events.length} 条`,'ok');
+  } else {
+    // start
+    REC.active = true;
+    REC.startTime = performance.now();
+    REC.events = [];
+    document.getElementById('rec-active-dot').style.display = '';
+    document.getElementById('rec-start-btn').textContent = '停止录制';
+    document.getElementById('rec-tab-lbl').textContent = '录制中';
+    toast('开始录制','ok');
+  }
+}
+function renderRecList(){
+  const host = document.getElementById('rec-list');
+  if(!REC.list.length){
+    host.innerHTML = '<div class="rec-empty">尚未录制</div>';
+    return;
+  }
+  host.innerHTML = REC.list.map(it=>`
+    <div class="rec-item">
+      <div class="rec-name">${esc(it.name)}</div>
+      <div class="rec-meta">${it.events.length} 条 · ${(it.duration/1000).toFixed(1)}s</div>
+      <button class="fe-mini" onclick="recPlay(${it.id})">▶ 回放</button>
+      <button class="fe-mini" onclick="recExport(${it.id})">导出</button>
+      <button class="fe-mini" onclick="recDelete(${it.id})">✕</button>
+    </div>
+  `).join('');
+}
+function recPlay(id){
+  const it = REC.list.find(r=>r.id===id); if(!it) return;
+  closeRecPanel();
+  _writeLogRow('sys', `─── 回放 ${it.name} ───`, null, new Date());
+  const t0 = performance.now();
+  function step(i){
+    if(i >= it.events.length){
+      _writeLogRow('sys', `─── 回放结束 ───`, null, new Date());
+      return;
+    }
+    const evt = it.events[i];
+    const due = t0 + evt.t;
+    const wait = due - performance.now();
+    setTimeout(()=>{
+      _writeLogRow(evt.dir, '[回放] ' + evt.msg, evt.style, new Date(), evt.src);
+      step(i+1);
+    }, Math.max(0, wait));
+  }
+  step(0);
+}
+function recExport(id){
+  const it = REC.list.find(r=>r.id===id); if(!it) return;
+  const blob = new Blob([JSON.stringify(it, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `lanmonitor_recording_${id}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function recExportAll(){
+  if(!REC.list.length){ toast('没有可导出的录制','warn'); return; }
+  const blob = new Blob([JSON.stringify(REC.list, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `lanmonitor_recordings_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function recDelete(id){
+  REC.list = REC.list.filter(r=>r.id!==id);
+  saveSettings();
+  renderRecList();
+}
+
+/* ═══════════════════════════════════════════
+   v4: Terminal search (Ctrl+F)
+═══════════════════════════════════════════ */
+function openSearch(){
+  SEARCH.open = true;
+  const bar = document.getElementById('term-search');
+  bar.classList.add('open');
+  const inp = document.getElementById('term-search-inp');
+  inp.focus();
+  inp.select();
+}
+function closeSearch(){
+  SEARCH.open = false;
+  SEARCH.term = '';
+  document.getElementById('term-search').classList.remove('open');
+  document.querySelectorAll('.t-row').forEach(r=>{
+    r.classList.remove('tsearch-hit','tsearch-current','tsearch-dim');
+  });
+}
+function onSearchInput(v){
+  SEARCH.term = v.toLowerCase();
+  SEARCH.hits = [];
+  SEARCH.idx = -1;
+  const rows = document.querySelectorAll('.t-row');
+  rows.forEach(r=>{
+    r.classList.remove('tsearch-hit','tsearch-current','tsearch-dim');
+    const text = (r.dataset.text || r.textContent || '').toLowerCase();
+    if(v && text.includes(v)){
+      r.classList.add('tsearch-hit');
+      SEARCH.hits.push(r);
+    } else if(v){
+      r.classList.add('tsearch-dim');
+    }
+  });
+  updateSearchInfo();
+  if(SEARCH.hits.length){
+    SEARCH.idx = 0;
+    SEARCH.hits[0].classList.add('tsearch-current');
+    SEARCH.hits[0].scrollIntoView({block:'center'});
+  }
+}
+function searchNav(dir){
+  if(!SEARCH.hits.length) return;
+  if(SEARCH.idx >= 0) SEARCH.hits[SEARCH.idx]?.classList.remove('tsearch-current');
+  SEARCH.idx = (SEARCH.idx + dir + SEARCH.hits.length) % SEARCH.hits.length;
+  const cur = SEARCH.hits[SEARCH.idx];
+  cur.classList.add('tsearch-current');
+  cur.scrollIntoView({block:'center'});
+  updateSearchInfo();
+}
+function onSearchKey(e){
+  if(e.key === 'Escape'){ e.preventDefault(); closeSearch(); }
+  else if(e.key === 'Enter'){
+    e.preventDefault();
+    searchNav(e.shiftKey ? -1 : 1);
+  }
+}
+function updateSearchInfo(){
+  document.getElementById('tsearch-info').textContent =
+    SEARCH.hits.length ? `${SEARCH.idx+1}/${SEARCH.hits.length}` : '0/0';
+}
+
+/* ═══════════════════════════════════════════
+   v4: Template variable substitution
+═══════════════════════════════════════════ */
+function detectTemplate(cmd){
+  // Matches {var} or {var:default}
+  const re = /\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^}]*))?\}/g;
+  const vars = [];
+  const seen = new Set();
+  let m;
+  while((m = re.exec(cmd)) !== null){
+    if(!seen.has(m[1])){
+      seen.add(m[1]);
+      vars.push({name: m[1], dflt: m[2] || ''});
+    }
+  }
+  return vars;
+}
+function openTplDialog(cmd, originalSender){
+  const vars = detectTemplate(cmd);
+  if(!vars.length){ originalSender(cmd); return; }
+  _tplPending = { cmd, vars, sender: originalSender };
+  // Render preview
+  const re = /\{([a-zA-Z_][a-zA-Z0-9_]*)(?::[^}]*)?\}/g;
+  document.getElementById('tpl-cmd-preview').innerHTML = esc(cmd)
+    .replace(re, '<span class="tpl-var-name">{$1}</span>');
+  // Render fields
+  const host = document.getElementById('tpl-vars');
+  host.innerHTML = vars.map((v,i)=>`
+    <div class="tpl-row">
+      <label>${esc(v.name)}</label>
+      <input type="text" id="tpl-v-${i}" value="${esc(v.dflt)}" autofocus/>
+    </div>
+  `).join('');
+  document.getElementById('tpl-bg').classList.add('open');
+  setTimeout(()=>document.getElementById('tpl-v-0')?.focus(),50);
+}
+function confirmTpl(){
+  if(!_tplPending) return;
+  const {cmd, vars, sender} = _tplPending;
+  const vals = {};
+  vars.forEach((v,i)=>{ vals[v.name] = document.getElementById('tpl-v-'+i).value; });
+  const filled = cmd.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)(?::[^}]*)?\}/g, (_, name)=> vals[name] !== undefined ? vals[name] : '');
+  closeTpl();
+  sender(filled);
+}
+function closeTpl(){
+  document.getElementById('tpl-bg').classList.remove('open');
+  _tplPending = null;
+}
+
+/* Wrap doSend / qSend / bSend to support templates */
+const _origDoSend = doSend;
+doSend = function(){
+  const inp = document.getElementById('send-inp');
+  const v = inp.value;
+  if(!v.trim()) return;
+  if(detectTemplate(v).length){
+    openTplDialog(v, (filled)=>{
+      if(sendHistory[0] !== v){
+        sendHistory.unshift(v);
+        if(sendHistory.length > MAX_HISTORY) sendHistory.pop();
+        saveSettings();
+      }
+      histIdx = -1;
+      sendRaw(filled);
+    });
+  } else {
+    _origDoSend();
+  }
+};
+const _origQSend = qSend;
+qSend = async function(id){
+  const item=qCmds.find(c=>c.id===id); if(!item) return;
+  if(detectTemplate(item.cmd).length){
+    openTplDialog(item.cmd, async (filled)=>{
+      const prev=O.hexSend; O.hexSend=item.hex;
+      if(item.delay>0) await new Promise(r=>setTimeout(r,item.delay));
+      await sendRaw(filled);
+      O.hexSend=prev;
+    });
+  } else { await _origQSend(id); }
+};
+const _origBSend = bSend;
+bSend = async function(id){
+  const item=blocks.find(b=>b.id===id); if(!item) return;
+  if(detectTemplate(item.cmd).length){
+    openTplDialog(item.cmd, async (filled)=>{
+      const prev=O.hexSend; O.hexSend=item.hex;
+      if(item.delay>0) await new Promise(r=>setTimeout(r,item.delay));
+      await sendRaw(filled);
+      O.hexSend=prev;
+    });
+  } else { await _origBSend(id); }
+};
+
+/* ═══════════════════════════════════════════
+   v4: Visualization (canvas line charts + cards)
+═══════════════════════════════════════════ */
+function vizPushPoint(key, value, unit){
+  if(VIZ.paused) return;
+  if(!VIZ.series[key]){
+    VIZ.series[key] = { values:[], unit:unit||'', min:value, max:value, last:value };
+  }
+  const s = VIZ.series[key];
+  s.values.push({t: Date.now(), v: value});
+  if(s.values.length > VIZ.maxPoints) s.values.shift();
+  s.last = value;
+  if(value < s.min) s.min = value;
+  if(value > s.max) s.max = value;
+  // Throttled render
+  scheduleVizRender();
+}
+
+let _vizRenderScheduled = false;
+function scheduleVizRender(){
+  if(_vizRenderScheduled) return;
+  _vizRenderScheduled = true;
+  requestAnimationFrame(()=>{
+    _vizRenderScheduled = false;
+    renderViz();
+  });
+}
+
+function renderViz(){
+  const host = document.getElementById('viz-content');
+  if(!host) return;
+  const keys = Object.keys(VIZ.series);
+  // Frame stats card always visible if any frames
+  const frameCard = Object.keys(FRAME_STATS).length ? `
+    <div class="viz-frame-card">
+      <div class="viz-frame-title">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1 3h12v8H1z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M4 3v8M9 3v8" stroke="currentColor" stroke-width="1.2"/></svg>
+        ${esc(FRAME_CFG.name)} · 帧类型计数
+      </div>
+      <div class="viz-frame-types" id="viz-frame-types"></div>
+    </div>` : '';
+
+  if(!keys.length && !Object.keys(FRAME_STATS).length){
+    host.innerHTML = '<div class="viz-empty">尚无采样数据 · 接收 <code style="color:var(--acc);">TEMP:x</code> / <code style="color:var(--acc);">HUM:x</code> / <code style="color:var(--acc);">DIST:x</code> 等键值会自动绘制</div>';
+    return;
+  }
+  host.innerHTML = frameCard + `<div class="viz-row" id="viz-row-main"></div>`;
+  const row = document.getElementById('viz-row-main');
+  for(const key of keys){
+    const s = VIZ.series[key];
+    const card = document.createElement('div');
+    card.className = 'viz-card';
+    card.innerHTML = `
+      <div class="viz-card-title">
+        <span>${esc(key)}</span>
+        <span style="color:var(--t2);font-family:var(--mono);font-size:10px;">${s.values.length} pts</span>
+      </div>
+      <div>
+        <span class="viz-card-val">${typeof s.last === 'number' ? s.last.toFixed(2).replace(/\.00$/,'') : s.last}</span>
+        <span class="viz-card-unit">${esc(s.unit)}</span>
+      </div>
+      <div class="viz-card-stat">min <span>${typeof s.min === 'number' ? s.min.toFixed(2).replace(/\.00$/,'') : s.min}</span> · max <span>${typeof s.max === 'number' ? s.max.toFixed(2).replace(/\.00$/,'') : s.max}</span></div>
+      <div class="viz-chart"><canvas></canvas></div>
+    `;
+    row.appendChild(card);
+    const canvas = card.querySelector('canvas');
+    drawSparkline(canvas, s);
+  }
+  updFrameStatsDisplay();
+}
+
+function drawSparkline(canvas, s){
+  if(!s.values.length) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 240;
+  const H = canvas.clientHeight || 90;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+  // determine range
+  let mn = s.min, mx = s.max;
+  if(mn === mx){ mn -= 0.5; mx += 0.5; }
+  const pad = 4;
+  const xs = s.values.map((p,i)=> pad + (W - 2*pad) * (i / Math.max(1, s.values.length-1)));
+  const ys = s.values.map(p => pad + (H - 2*pad) * (1 - (p.v - mn)/(mx - mn)));
+  // Area fill
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, 'rgba(184,144,106,0.35)');
+  grad.addColorStop(1, 'rgba(184,144,106,0)');
+  ctx.beginPath();
+  ctx.moveTo(xs[0], H - pad);
+  for(let i=0;i<xs.length;i++) ctx.lineTo(xs[i], ys[i]);
+  ctx.lineTo(xs[xs.length-1], H - pad);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+  // line
+  ctx.beginPath();
+  ctx.moveTo(xs[0], ys[0]);
+  for(let i=1;i<xs.length;i++) ctx.lineTo(xs[i], ys[i]);
+  ctx.strokeStyle = '#b8906a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // last point dot
+  ctx.beginPath();
+  ctx.arc(xs[xs.length-1], ys[ys.length-1], 2.5, 0, Math.PI*2);
+  ctx.fillStyle = '#b8906a';
+  ctx.fill();
+}
+
+function vizClear(){
+  Object.keys(VIZ.series).forEach(k=>delete VIZ.series[k]);
+  Object.keys(FRAME_STATS).forEach(k=>delete FRAME_STATS[k]);
+  renderViz();
+}
+function vizTogglePause(){
+  VIZ.paused = !VIZ.paused;
+  const btn = document.getElementById('viz-pause-btn');
+  btn.textContent = VIZ.paused ? '继续采样' : '暂停采样';
+  btn.classList.toggle('is-er', VIZ.paused);
+}
+
+/* Hook into parseResp to feed numeric values */
+const _origParseResp = parseResp;
+parseResp = function(l){
+  // Recognize KEY:value pairs and push to viz
+  const m = /^([A-Za-z][A-Za-z0-9_]*)\s*:\s*(-?\d+(?:\.\d+)?)$/.exec(l);
+  if(m){
+    const key = m[1].toUpperCase();
+    const val = parseFloat(m[2]);
+    const units = {TEMP:'°C', HUM:'%', DIST:'cm', PWM:'%', BAT:'V', RPM:'rpm'};
+    vizPushPoint(key, val, units[key] || '');
+  }
+  _origParseResp(l);
+};
+
+/* ═══════════════════════════════════════════
+   v4: Center tab switching
+═══════════════════════════════════════════ */
+function switchCenter(name){
+  O.centerTab = name;
+  document.querySelectorAll('#center-tabs .ctab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('ctab-'+name).classList.add('on');
+  document.querySelectorAll('.cpane').forEach(p=>p.classList.remove('on'));
+  document.getElementById('cpane-'+name).classList.add('on');
+  if(name === 'viz') renderViz();
+  saveSettings();
+}
+
+/* ═══════════════════════════════════════════
+   v4: Persistence extensions
+═══════════════════════════════════════════ */
+const _origSaveSettings = saveSettings;
+saveSettings = function(){
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{
+    try {
+      const state = {
+        ble:{svc:document.getElementById('svc-uuid')?.value, char:document.getElementById('char-uuid')?.value},
+        uart:{baud:document.querySelector('#tab-uart .sel:nth-of-type(1)')?.value},
+        opts:O,
+        qCmds: qCmds.map(c=>({cmd:c.cmd,note:c.note,hex:c.hex,delay:c.delay,on:c.on})),
+        blocks: blocks.map(b=>({type:b.type,cmd:b.cmd,note:b.note,hex:b.hex,delay:b.delay,on:b.on})),
+        sendHistory,
+        lang: currentLang,
+        /* v4 additions */
+        frameCfg: {
+          enabled: FRAME_CFG.enabled, name: FRAME_CFG.name,
+          head: FRAME_CFG.head, tail: FRAME_CFG.tail,
+          typeOff: FRAME_CFG.typeOff, csumOff: FRAME_CFG.csumOff,
+          csumType: FRAME_CFG.csumType, csumKey: FRAME_CFG.csumKey,
+          types: FRAME_CFG.types
+        },
+        recList: REC.list.map(r=>({id:r.id, name:r.name, duration:r.duration, events:r.events})).slice(0, 5)  // keep last 5
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+    } catch(e){ console.warn('save failed', e); }
+  }, 400);
+};
+
+const _origApplyLoadedState = applyLoadedState;
+applyLoadedState = function(s){
+  _origApplyLoadedState(s);
+  if(!s) return;
+  if(s.frameCfg){
+    Object.assign(FRAME_CFG, s.frameCfg);
+    // Restore types as object (might be serialized correctly already)
+  }
+  if(Array.isArray(s.recList)) REC.list = s.recList;
+  // Restore center tab
+  if(s.opts?.centerTab){ switchCenter(s.opts.centerTab); }
+  // Restore send target
+  if(s.opts?.sendTarget){
+    const tgt = document.getElementById('send-target');
+    if(tgt) tgt.value = s.opts.sendTarget;
+  }
+};
+
+/* Update send-target binding */
+function _bindSendTarget(){
+  const tgt = document.getElementById('send-target');
+  if(tgt){
+    tgt.value = O.sendTarget;
+    tgt.addEventListener('change', e=>{
+      O.sendTarget = e.target.value;
+      saveSettings();
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════
+   v4: Extended keyboard shortcuts
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', e=>{
+  // Ctrl+F: search
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='f'){
+    e.preventDefault();
+    if(O.centerTab === 'term') openSearch();
+    return;
+  }
+  // Ctrl+B: toggle BLE
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='b'){
+    e.preventDefault();
+    toggleBLE();
+    return;
+  }
+  // Ctrl+U: toggle UART
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='u'){
+    e.preventDefault();
+    toggleUART();
+    return;
+  }
+  // Esc closes search (handled in search bar) and modals
+  if(e.key === 'Escape'){
+    if(document.getElementById('frame-editor-bg').classList.contains('open')) closeFrameEditor();
+    else if(document.getElementById('rec-bg').classList.contains('open')) closeRecPanel();
+    else if(document.getElementById('tpl-bg').classList.contains('open')) closeTpl();
+    else if(SEARCH.open) closeSearch();
+  }
+});
+
+/* Override setUI/syncConnectButton to also update dual chips */
+const _origSyncConnectButton = syncConnectButton;
+syncConnectButton = function(){
+  _origSyncConnectButton();
+  syncDualChips();
+};
+
+const _origSetUI = setUI;
+setUI = function(state, name){
+  _origSetUI(state, name);
+  syncDualChips();
+};
+
+/* Override BLE/UART finish hooks to refresh chips */
+const _bleConnOrig = bleConn;
+bleConn = async function(){ await _bleConnOrig(); syncDualChips(); };
+const _bleDiscOrig = bleDisc;
+bleDisc = function(){ _bleDiscOrig(); syncDualChips(); };
+
+const _uartConnOrig = uartConn;
+uartConn = async function(){ await _uartConnOrig(); syncDualChips(); };
+const _uartDiscOrig = uartDisc;
+uartDisc = async function(){ await _uartDiscOrig(); syncDualChips(); };
+
+
+/* ═══════════════════════════════════════════
    v3: Persistence (localStorage)
 ═══════════════════════════════════════════ */
 const LS_KEY = 'lanmonitor-v3-state';
@@ -3109,9 +4489,15 @@ document.addEventListener('change', e=>{
   if(saved) applyLoadedState(saved);
   updFpsVis();
   syncConnectButton();
-  addLog('sys','快捷键: Ctrl+L 清空 · Ctrl+K 聚焦 · Ctrl+P 暂停 · Ctrl+D 连接/断开 · ↑↓ 翻历史');
+  addLog('sys','快捷键: Ctrl+L 清空 · Ctrl+K 聚焦 · Ctrl+P 暂停 · Ctrl+D 连接 · Ctrl+F 搜索 · Ctrl+B/U BLE/UART · ↑↓ 翻历史');
+  // v4 init
+  _bindSendTarget();
+  syncDualChips();
+  renderViz();
+  renderRecList();
 })();
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"7939e04a4baf43c8b86a560f74aac60e","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"7939e04a4baf43c8b86a560f74aac60e","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
